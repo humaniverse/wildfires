@@ -1,0 +1,3432 @@
+
+```{r}
+
+#import necessary libraries for this project
+
+library("sf")
+library("tmap")
+library("spdep")
+library("rstan")
+library("geostan")
+library("SpatialEpi")
+library("tidybayes")
+library("tidyverse")
+library("here")
+library("janitor") #library for rearranging the columns of the dataset
+library("dplyr")
+library("readxl") #for impoorting excel files
+library("lubridate")
+library('corrr')
+library("raster")
+library("dismo")
+library("tmap")
+library("sf")
+library("rJava")
+
+
+
+
+```
+
+1. SOCIAL VULNERABILITY TO WILDFIRES IN ENGLAND AND WALES
+
+```{r}
+
+england_regions <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Regions_December_2022_EN_BUC_-2059701640261009719/RGN_DEC_2022_EN_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("rgn22cd", "rgn22nm", "geometry")
+
+
+```
+
+
+```{r}
+
+wales <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Countries_December_2022_UK_BUC_-3821418063001813993/CTRY_DEC_2022_UK_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("ctry22cd", "ctry22nm","geometry") %>%
+  dplyr::filter(ctry22nm == "Wales")
+
+
+```
+
+```{r}
+
+england_wales <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Countries_December_2022_UK_BUC_-3821418063001813993/CTRY_DEC_2022_UK_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("ctry22cd", "ctry22nm","geometry") %>%
+  dplyr::filter(ctry22nm == "Wales" | ctry22nm == "England")
+
+
+england_wales_wgs84 <- st_transform(england_wales, crs = "+proj=longlat +datum=WGS84")
+
+```
+
+```{r}
+
+tm_shape(england_wales) +
+  tm_polygons()
+
+
+
+```
+
+
+
+IMPORTING GEOGRAPHICAL UNIT: MSOA
+
+```{r}
+
+msoa <- read_sf(here::here("Data/Geographic Boundaries/MSOA_Dec_2021_Boundaries_Generalised_Clipped_EW_BGC_2022_9019591912524200825/MSOA_2021_EW_BGC.shp")) %>%
+  clean_names() %>%
+  rename(msoa_code = msoa21cd,
+         msoa_name = msoa21nm) %>%
+  dplyr::select("msoa_code", "msoa_name", "geometry")
+
+
+```
+
+```{r}
+
+tm_shape(msoa) +
+  
+  tm_borders()
+
+```
+
+
+```{r}
+fire_rescue_boundary <- read_sf(here::here("Data/Geographic Boundaries/Fire_and_Rescue_Authorities_December_2022_EW_BUC_7578859351911601513/FRA_DEC_2022_EW_BUC.shp")) %>%
+  clean_names() 
+
+```
+
+
+CALCULATING SOCIAL VULNERABILITY INDEX
+
+IMPORTING VARIABLES FOR SOCIAL VULNERABILITY
+
+Component 1: Age
+
+```{r}
+
+age <- read_csv(here::here("Data/Social Vulnerability Data/Age/custom-filtered-2023-06-23T18_25_01Z.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "age_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        age_code= age_6_categories_code,
+        age_number=observation) %>%
+  
+  pivot_wider(names_from = age_code, values_from = age_number) %>%
+    rename(age_15below = "1",
+           age_2 = "2",
+           age_3 = "3",
+           age_4 = "4",
+           age_5 = "5",
+         age_65over = "6")%>% 
+  mutate(population_msoa = age_15below + age_2 + age_3 + age_4 + age_5 + age_65over) %>%
+  mutate(pop_age_15below_normalised = (age_15below / population_msoa) * 100) %>%
+  mutate(pop_age_65over_normalised = (age_65over / population_msoa) * 100) %>%
+  dplyr::select("msoa_code","pop_age_15below_normalised","pop_age_65over_normalised","population_msoa")
+
+population <- age %>%
+  dplyr::select("msoa_code","population_msoa")
+
+age <- age %>%
+  dplyr::select("msoa_code","pop_age_15below_normalised","pop_age_65over_normalised")
+
+
+```
+Component 2: Education
+
+2.1. Highest Level of Qualification
+
+```{r}
+
+edu_qualif <- read_csv(here::here("Data/Social Vulnerability Data/Education/education_qualification.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "highest_level_of_qualification_7_categories_code","highest_level_of_qualification_7_categories","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        qualif_code= highest_level_of_qualification_7_categories_code,
+        qualif_cat = highest_level_of_qualification_7_categories,
+        edu_qualif_number=observation) %>%
+  dplyr::filter(qualif_code == 0) %>%
+  
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(no_qualification_normalised = (edu_qualif_number / population_msoa) *100) %>%
+  dplyr::select("msoa_code", "no_qualification_normalised")
+  
+  
+
+```
+2.2. Proficiency in English
+
+
+```{r}
+
+edu_english <- read_csv(here::here("Data/Social Vulnerability Data/Education/education_english.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "proficiency_in_english_language_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        prof_code= proficiency_in_english_language_5_categories_code,
+        edu_english_number=observation)%>%
+  
+  dplyr::filter(prof_code == 3 | prof_code == 4) %>%
+  pivot_wider(names_from = prof_code, values_from = edu_english_number) %>%
+  rename(english_not_well = "3",
+         english_cannot = "4")%>%
+  mutate(total_english = english_not_well + english_cannot) %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code"))%>%
+  mutate(english_normalised = (total_english / population_msoa)*100) %>%
+  dplyr::select("msoa_code","english_normalised")
+
+```
+
+Component 3: Health
+
+3.1. The number of disable people
+
+```{r}
+
+health_disability <- read_csv(here::here("Data/Social Vulnerability Data/Health/health_disability.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_disabled_people_in_household_4_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        dis_code= number_of_disabled_people_in_household_4_categories_code,
+        dis_number=observation)%>%
+  
+  dplyr::filter(dis_code == 1 | dis_code == 2) %>%
+  pivot_wider(names_from = dis_code, values_from = dis_number) %>%
+  rename(disable_1 = "1",
+         disable_2 = "2")%>%
+  mutate(total_disabled = disable_1 + disable_2) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(disabled_normalised = (total_disabled / population_msoa)*100) %>%
+  dplyr::select("msoa_code","disabled_normalised")
+
+
+```
+3.2. The number of people in households with a long-term health condition but are not disabled
+
+
+```{r}
+
+health_longterm <- read_csv(here::here("Data/Social Vulnerability Data/Health/health_longterm.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_people_in_household_with_a_long_term_heath_condition_but_are_not_disabled_4_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        longterm_code= number_of_people_in_household_with_a_long_term_heath_condition_but_are_not_disabled_4_categories_code,
+        longterm_number=observation)%>%
+  
+  dplyr::filter(longterm_code == 1 | longterm_code == 2) %>%
+  pivot_wider(names_from = longterm_code, values_from = longterm_number) %>%
+  rename(longterm_1 = "1",
+         longterm_2 = "2")%>%
+  mutate(total_longtermhealth = longterm_1 + longterm_2) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(longtermhealth_normalised = (total_longtermhealth / population_msoa)*100) %>%
+  dplyr::select("msoa_code","longtermhealth_normalised")
+
+
+```
+Component 4: Socioeconomic Status
+
+4.1. National statistics socio-economic classification (ns-sec)
+
+```{r}
+
+socio_classify <- read_csv(here::here("Data/Social Vulnerability Data/Socioeconomic Status/socio_occupation.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "national_statistics_socio_economic_classification_ns_se_c_10_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        socio_code= national_statistics_socio_economic_classification_ns_se_c_10_categories_code,
+        classify_number=observation)%>%
+  
+  dplyr::filter(socio_code == 6 | socio_code == 7 | socio_code == 8) %>%
+  pivot_wider(names_from = socio_code, values_from = classify_number) %>%
+  rename(semi_routine = "6",
+         routine = "7",
+         unemployed_neverworked = "8") %>%
+  mutate(total_lowoccupation = semi_routine + routine) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(lowoccupation_normalised = (total_lowoccupation / population_msoa)*100) %>%
+  mutate(unemployed_neverworked_normalised = (unemployed_neverworked / population_msoa)*100) %>%
+  dplyr::select("msoa_code","unemployed_neverworked_normalised","lowoccupation_normalised")
+
+
+```
+4.2. Number of unpaid carers in household
+
+
+```{r}
+
+socio_unpaid <- read_csv(here::here("Data/Social Vulnerability Data/Socioeconomic Status/socio_unpaid.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_unpaid_carers_in_household_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        unpaid_code= number_of_unpaid_carers_in_household_6_categories_code,
+        unpaid_number=observation) %>%
+  
+  dplyr::filter(unpaid_code == 1 | unpaid_code == 2 | unpaid_code == 3 | unpaid_code == 4) %>%
+  pivot_wider(names_from = unpaid_code, values_from = unpaid_number) %>%
+  rename(unpaid1 = "1",
+         unpaid2 = "2",
+         unpaid3 = "3",
+         unpaid4 = "4")  %>%
+  mutate(total_unpaid = unpaid1 + unpaid2 + unpaid3 + unpaid4) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(unpaid_normalised = (total_unpaid / population_msoa)*100) %>%
+  dplyr::select("msoa_code","unpaid_normalised")
+
+
+```
+Component 5: Household Characteristics
+
+5.1. Household Size
+
+```{r}
+
+household_size <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_size.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "household_size_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        size_code= household_size_5_categories_code,
+        size_number=observation)%>%
+  
+  pivot_wider(names_from = size_code, values_from = size_number)%>%
+    rename(h0 = "0",
+         h1 = "1",
+         h2 = "2",
+         h3 = "3",
+         h4 = "4")
+
+household_size$total_household <- household_size$h0 + household_size$h1 + household_size$h2 + household_size$h3 + household_size$h4
+
+household_size<- household_size %>%
+  dplyr::select("msoa_code","total_household")
+  
+
+```
+
+5.2. Household Composition
+
+```{r}
+
+household_composition <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_composition.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "household_composition_15_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        comp_code= household_composition_15_categories_code,
+        comp_number=observation)%>%
+  
+  dplyr::filter(comp_code == 1 | comp_code == 3 | comp_code == 10) %>%
+  pivot_wider(names_from = comp_code, values_from = comp_number) %>%
+  rename(oneperson_66 = "1",
+         singlefamily_all66 = "3",
+         loneparent_dependent = "10") %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(oneperson_66_normalised = (oneperson_66 / total_household)*100) %>%
+  mutate(singlefamily_all66_normalised = (singlefamily_all66 / total_household)*100) %>%
+  mutate(loneparent_dependent_normalised = (loneparent_dependent / total_household)*100) %>%
+           dplyr::select("msoa_code","oneperson_66_normalised", "singlefamily_all66_normalised","loneparent_dependent_normalised")
+
+```
+
+5.3. Car or van availability
+
+```{r}
+
+household_car <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_car.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "car_or_van_availability_3_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        car_code= car_or_van_availability_3_categories_code,
+        car_number=observation)%>%
+  
+  pivot_wider(names_from = car_code, values_from = car_number)%>%
+    rename(notapp = "-8",
+         nocar = "0",
+         car = "1") %>%
+  left_join(., household_size, by = c("msoa_code"= "msoa_code")) %>%
+  mutate(., nocar_normalised = (nocar / total_household)* 100) %>%
+  dplyr::select("msoa_code", "nocar_normalised")
+
+
+```
+
+Component 6 Housing
+
+6.1. Tenure of Household
+
+```{r}
+
+housing_tenure <- read_csv(here::here("Data/Social Vulnerability Data/Housing/housing_tenure.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "tenure_of_household_7_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        tenure_code= tenure_of_household_7_categories_code,
+        tenure_number=observation)%>%
+  
+  dplyr::filter(tenure_code == 2 | tenure_code == 3 | tenure_code == 4 | tenure_code == 5) %>%
+  pivot_wider(names_from = tenure_code, values_from = tenure_number) %>%
+  rename(socialrent1 = "2",
+         socialrent2 = "3",
+         privaterent1 = "4",
+         privaterent2 = "5") %>%
+  mutate(social_total = socialrent1 + socialrent2) %>%
+  mutate(privaterent_total = privaterent1 + privaterent2) %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(socialrent_normalised = (social_total / total_household) *100) %>%
+  mutate(privaterent_normalised = (privaterent_total / total_household) *100) %>%
+  dplyr::select("msoa_code", "socialrent_normalised", "privaterent_normalised")
+
+
+```
+
+6.2. Occupancy rating for rooms
+
+```{r}
+
+housing_occupancy <- read_csv(here::here("Data/Social Vulnerability Data/Housing/housing_occupancy_rating.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "occupancy_rating_for_rooms_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        occupancy_code= occupancy_rating_for_rooms_5_categories_code,
+        occupancy_number=observation)%>%
+  
+  dplyr::filter(occupancy_code == 1 | occupancy_code == 2 | occupancy_code == 4) %>%
+  pivot_wider(names_from = occupancy_code, values_from = occupancy_number) %>%
+  rename(underoccupied2 = "1",
+         unoccupied1 = "2",
+         overcrowded = "4") %>%
+  mutate(underoccupied_total = underoccupied2 + unoccupied1) %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(underoccupied_normalised = (underoccupied_total / total_household)*100) %>%
+  mutate(overcrowded_normalised = (overcrowded / total_household)*100) %>%
+  dplyr::select("msoa_code", "underoccupied_normalised", "overcrowded_normalised")
+
+
+```
+6.3. Mobile Home
+
+```{r}
+
+mobile_home <- read_csv(here::here("Data/Social Vulnerability Data/Housing/mobile_home.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "accommodation_by_type_of_dwelling_9_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        mobile_code= accommodation_by_type_of_dwelling_9_categories_code,
+        mobile_number=observation)%>%
+  
+  dplyr::filter(mobile_code == 8) %>%
+  pivot_wider(names_from = mobile_code, values_from = mobile_number) %>%
+  rename(mobile1 = "8") %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(mobile_normalised = (mobile1 / total_household)*100) %>%
+  dplyr::select("msoa_code", "mobile_normalised")
+
+
+```
+
+
+Component of 7: Migration and Ethnicity
+
+7.1. Migrant Indicator
+
+```{r}
+
+migrant <- read_csv(here::here("Data/Social Vulnerability Data/Migration and Ethnicity/migration.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "migrant_indicator_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        migrant_code= migrant_indicator_5_categories_code,
+        migrant_number=observation)%>%
+  
+  dplyr::filter(migrant_code == 2 |migrant_code == 3) %>%
+  pivot_wider(names_from = migrant_code, values_from = migrant_number) %>%
+  rename(migrant_insideUK = "2",
+         migrant_outsideUK = "3") %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(migrant_insideUK_normalised = (migrant_insideUK / population_msoa)*100) %>%
+  mutate(migrant_outsideUK_normalised = (migrant_outsideUK / population_msoa)*100) %>%
+  dplyr::select("msoa_code", "migrant_insideUK_normalised", "migrant_outsideUK_normalised")
+
+
+```
+7.2. Ethnicity
+
+```{r}
+
+ethnicity <- read_csv(here::here("Data/Social Vulnerability Data/Migration and Ethnicity/ethnicity.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "ethnic_group_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        ethnic_code= ethnic_group_6_categories_code,
+        ethnic_number=observation)%>%
+  
+  dplyr::filter(ethnic_code == 1 | ethnic_code == 2 | ethnic_code == 3 | ethnic_code == 5) %>%
+  pivot_wider(names_from = ethnic_code, values_from = ethnic_number) %>%
+  rename(asian = "1",
+         black = "2",
+         mixed = "3",
+         other = "5") %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(asian_normalised = (asian / population_msoa)*100) %>%
+  mutate(black_normalised = (black / population_msoa)*100) %>%
+  mutate(mixed_normalised = (mixed / population_msoa)*100) %>%
+  mutate(other_normalised = (other / population_msoa)*100) %>%
+
+  dplyr::select("msoa_code", "asian_normalised", "black_normalised", "mixed_normalised","other_normalised")
+
+
+```
+
+Final Spatial Data for Social Vulnerability Index Building
+
+```{r}
+
+final_data_SoVI <- msoa %>%
+  
+  left_join(., age, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., edu_english, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., edu_qualif, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., health_disability, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., health_longterm, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., household_composition, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., household_car, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., housing_occupancy, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., housing_tenure, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., mobile_home, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., migrant, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., socio_classify, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., socio_unpaid, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., ethnicity, by = c("msoa_code" = "msoa_code"))
+
+
+
+```
+
+PRINCIPAL COMPONENT ANALYSIS
+
+
+```{r}
+# Select columns after the third column
+columns_to_scale <- names(final_data_SoVI)[4:ncol(final_data_SoVI)]
+
+# Scale the selected columns using z-score standardization
+scaled_df <- final_data_SoVI %>%
+  mutate_at(vars(columns_to_scale), scale) %>%
+  st_drop_geometry(.)
+
+# View the scaled dataframe
+print(scaled_df)
+```
+```{r}
+# Subset the dataframe to include columns 4 to 22
+
+library(ggcorrplot)
+
+
+subset_data <- scaled_df[, 3:26]
+corr_matrix <- cor(subset_data)
+ggcorrplot(corr_matrix)
+```
+
+
+```{r}
+
+library(psych)
+
+kmo_result <- KMO(subset_data)
+bartlett_result <- cortest.bartlett(subset_data)
+print(kmo_result)
+print(bartlett_result)
+
+
+```
+
+```{r}
+
+library(psych)
+library(factoextra)
+
+
+# Assuming your data is stored in the "data" object
+pca <- principal(subset_data, nfactors = ncol(subset_data))
+
+loadings <- pca$loadings
+communalities <- pca$communality
+
+eigenvalues <- pca$values
+num_factors <- sum(eigenvalues > 1)
+
+# Original PCA results
+print(pca)
+
+# Kaiser's criteria
+cat("Number of factors according to Kaiser's criteria:", num_factors)
+
+
+```
+
+
+
+
+
+```{r}
+
+# Assuming your PCA result is stored in the "pca" object
+
+# Extract eigenvalues
+eigenvalues <- pca$values
+
+# Calculate proportion of variance explained
+variance_proportion <- eigenvalues / sum(eigenvalues)
+
+# Print the proportion of variance explained by each component
+print(variance_proportion)
+
+```
+
+```{r}
+
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the results
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                              Factor1 = factor_loadings[, 1], 
+                              Factor2 = factor_loadings[, 2],
+                              Factor3 = factor_loadings[, 3],
+                              Factor4 = factor_loadings[, 4],
+                              Factor5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+```{r}
+
+# Extract communalities
+communalities <- pca$communality
+
+# Create a dataframe to store variable names and their communalities
+communality_df <- data.frame(Variable = colnames(subset_data), Communalities = communalities)
+
+# Order the dataframe by Communalities in descending order
+communality_df <- communality_df[order(communality_df$Communalities, decreasing = TRUE), ]
+
+# Print the communality dataframe
+print(communality_df)
+
+
+```
+
+
+
+
+```{r}
+
+# Install and load the required packages
+library(ggplot2)
+
+# Create a data frame for the scree plot
+scree_data <- data.frame(Component = 1:length(eigenvalues), Variance_Proportion = variance_proportion)
+
+# Create the scree plot
+scree_plot <- ggplot(data = scree_data, aes(x = Component, y = Variance_Proportion)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Component", y = "Variance Proportion") +
+  ggtitle("Scree Plot") +
+  theme_minimal()
+
+# Display the scree plot
+print(scree_plot)
+
+```
+
+
+
+
+```{r}
+
+
+# Create the scree plot
+scree_plot <- plot(1:length(eigenvalues), eigenvalues, type = "b", pch = 19, xlab = "Component Number", ylab = "Eigenvalue",
+                   main = "Scree Plot", frame.plot = TRUE, xlim = c(1, length(eigenvalues)), ylim = c(0, max(eigenvalues)))
+
+# Add a line at eigenvalue 1
+abline(h = 1, col = "red", lty = "dashed")
+
+# Add component labels
+text(1:length(eigenvalues), eigenvalues, labels = 1:length(eigenvalues), pos = 3, cex = 0.8)
+
+# Adjust x-axis labels
+axis(side = 1, at = c(5, 10, 15, 20, 24), labels = c(5, 10, 15, 20, 24))
+
+# Adjust y-axis labels
+axis(side = 2)
+
+
+```
+
+
+
+```{r}
+
+library(psych)
+
+# Set the number of variables and observations in your data
+num_variables <- 19
+num_observations <- 7264
+
+# Generate random data for demonstration purposes
+set.seed(123)  # Set a seed for reproducibility
+data <- matrix(rnorm(num_variables * num_observations), ncol = num_variables)
+
+# Perform parallel analysis using Monte Carlo simulation
+pa_result <- principal(subset_data, nfactors = num_variables, n.obs = num_observations, scores = FALSE, rotate = "none", residuals = FALSE)
+pa_eigenvalues <- pa_result$values
+
+# Generate random eigenvalues for Monte Carlo simulation
+set.seed(456)  # Set a different seed for simulation
+sim_eigenvalues <- replicate(1000, {
+  random_data <- matrix(rnorm(num_variables * num_observations), ncol = num_variables)
+  sim_result <- principal(random_data, nfactors = num_variables, n.obs = num_observations, scores = FALSE, rotate = "none", residuals = FALSE)
+  sim_result$values
+})
+
+# Calculate the 95th percentile of the simulated eigenvalues
+percentile_95 <- apply(sim_eigenvalues, 1, function(x) quantile(x, probs = 0.95))
+
+# Compare eigenvalues with the 95th percentile
+significant_eigenvalues <- pa_eigenvalues > percentile_95
+
+# Count the number of significant eigenvalues
+num_components <- sum(significant_eigenvalues)
+
+# Display the number of components
+cat("Number of components:", num_components, "\n")
+
+```
+
+
+
+```{r}
+
+# Perform PCA with 5 components and varimax rotation
+pca <- principal(subset_data, nfactors = 5, rotate = "varimax")
+
+# Extract factor loadings
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the results
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                              Factor1 = factor_loadings[, 1], 
+                              Factor2 = factor_loadings[, 2],
+                              Factor3 = factor_loadings[, 3],
+                              Factor4 = factor_loadings[, 4],
+                              Factor5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+
+```{r}
+
+
+# Get the factor scores
+scores <- as.data.frame(pca$scores)
+
+# Extract eigenvalues
+eigenvalues <- pca$values
+
+# Calculate proportion of variance explained
+variance_proportion <- eigenvalues / sum(eigenvalues)
+
+
+
+```
+
+
+
+```{r}
+
+
+# Print the proportion of variance explained by each component
+print(variance_proportion)
+
+
+```
+
+
+```{r}
+
+# Extract factor loadings for the five components
+factor_loadings <- pca$loadings
+
+# Calculate squared loadings
+squared_loadings <- factor_loadings^2
+
+# Create a dataframe to store the results
+contribution_table <- data.frame(Variable = colnames(subset_data), 
+                                 Component1 = squared_loadings[, 1], 
+                                 Component2 = squared_loadings[, 2],
+                                 Component3 = squared_loadings[, 3],
+                                 Component4 = squared_loadings[, 4],
+                                 Component5 = squared_loadings[, 5])
+
+# Order the dataframe by the contributions in descending order for the first component
+contribution_table <- contribution_table[order(contribution_table$Component1, decreasing = TRUE), ]
+
+# Print the contribution table
+print(contribution_table)
+
+
+
+
+
+
+```
+
+```{r}
+
+# Extract factor loadings for the five components
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the loadings
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                             Component1 = factor_loadings[, 1], 
+                             Component2 = factor_loadings[, 2],
+                             Component3 = factor_loadings[, 3],
+                             Component4 = factor_loadings[, 4],
+                             Component5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+
+
+
+
+
+```{r}
+
+scores$SoVI <- ((scores$RC1 * 0.4331856253) + (scores$RC2 * 0.2174490076) + (scores$RC3 * 0.0742024742) + (scores$RC4 * 0.0640479196) +  (scores$RC5 * 0.0438841052)) / (0.4331856253 + 0.2174490076 + 0.0742024742 + 0.0640479196 + 0.0438841052)
+
+
+
+```
+
+
+```{r}
+x <-0.4331856253 + 0.2174490076 + 0.0742024742 + 0.0640479196 + 0.0438841052
+x
+```
+
+```{r}
+
+scores$SoVI_z <- scale(scores$SoVI) 
+
+
+
+```
+
+```{r}
+
+# Concatenate the column from dataset2 to dataset1
+combined_dataset <- cbind(final_data_SoVI, scores$SoVI_z)
+
+
+
+```
+
+
+```{r}
+
+# Define your own breaks, midpoint, and corresponding labels
+breaks <- c(-Inf, -1, -0.5, 0.5, 1, Inf)
+labels <- c("Very Low (<-1 Std)", "Low (-1 to -0.5 Std)", "Moderate (-0.5 to 0.5 Std)", "High (0.5 to 1 Std)", "Very High (>1 Std)")
+
+# Define the colors for each category
+colors <- c("#73add0", "#abd8e9", "#ffffbf", "#fdae61", "#d7191c")
+
+SoVI_map <- tm_shape(combined_dataset) +
+  tm_fill("scores.SoVI_z",
+          title = "SoVI",
+          breaks = breaks,
+          labels = labels,
+          palette = colors,
+          midpoint = 0,  # Specify the midpoint value here
+          legend.hist = TRUE) +
+  tm_borders(col = "black", lwd = 0.04) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Data Source: Office for National Statistics licensed under the Open Government Licence v.1.0.", position=c(0.38,0.084), size=0.5)+
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(SoVI_map, filename = "SoVImap.png",dpi = 300)
+
+
+```
+
+```{r}
+
+# Assuming you have your numeric column named "scores.SoVI_z" and breaks defined as you mentioned
+breaks <- c(-Inf, -1, -0.5, 0.5, 1, Inf)
+
+# Bin the numeric column using the defined breaks
+bins <- cut(combined_dataset_2.0$scores.SoVI_z, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+
+# Calculate the table of occurrences for each interval
+table_occurrences <- table(bins)
+
+# Calculate the total number of data points
+total_data_points <- length(combined_dataset_2.0$scores.SoVI_z)
+
+# Calculate the percentage for each interval
+percentage_per_break <- table_occurrences / total_data_points * 100
+
+# Define the labels for each interval to make the output more descriptive
+break_labels <- c("<= -1", "-1 to -0.5", "-0.5 to 0.5", "0.5 to 1", "> 1")
+
+# Create a data frame to store the results
+result_df <- data.frame(Break = break_labels, Count = table_occurrences, Percentage = percentage_per_break)
+
+# Calculate the count and percentage for "Outliers"
+outliers_count <- sum(bins == 0)
+outliers_percentage <- outliers_count / total_data_points * 100
+
+# Add "Outliers" row to the data frame
+result_df <- rbind(result_df, c("Outliers", outliers_count, outliers_percentage))
+
+# Print the result
+print(result_df)
+
+
+```
+
+
+
+
+Spatial Autocorrelation of SoVI
+
+```{r}
+
+library(spdep)
+
+
+# We need to coerce the sf spatialdatafile object into a new sp object
+combined_dataset_2.0 <- as(combined_dataset, "Spatial")
+# Create spatial weights matrix for areas
+nb_knn <- knn2nb(knearneigh(coordinates(combined_dataset_2.0), k = 5))
+WeightsMatrix <- nb2mat(nb_knn, style = 'B')
+Residual_WeightMatrix <- mat2listw(WeightsMatrix, style = 'W')
+# Run the test on the regression model output object "modelMLR" using lm.morantest()
+moran.test(combined_dataset_2.0$scores.SoVI_z, Residual_WeightMatrix)
+
+
+```
+
+
+```{r}
+
+local_moran_sovi <- localmoran(combined_dataset_2.0$scores.SoVI_z, Residual_WeightMatrix)
+
+
+```
+
+
+```{r}
+
+combined_dataset_2.0$lag_sovi <- lag.listw(Residual_WeightMatrix, combined_dataset_2.0$scores.SoVI_z)
+
+```
+
+
+
+```{r}
+
+combined_stats <- st_as_sf(combined_dataset_2.0)
+
+
+```
+
+```{r}
+
+# set a significance value
+sig_level <- 0.1
+
+# classification with significance value
+combined_stats$quad_sig <- ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                          combined_stats$lag_sovi > 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'high-high', 
+                                   ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                          combined_stats$llag_sovi <= 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'low-low', 
+                                   ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                          combined_stats$lag_sovi <= 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'high-low', 
+                                   ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                          combined_stats$lag_sovi > 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'low-high',
+                                   ifelse(local_moran_sovi[,5] > sig_level, 
+                                          'not-significant', 
+                                          'not-significant')))))
+
+# classification without significance value
+combined_stats$quad_non_sig <- ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                              combined_stats$lag_sovi > 0, 
+                                              'high-high', 
+                                       ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                              combined_stats$lag_sovi <= 0, 
+                                              'low-low', 
+                                       ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                              combined_stats$lag_sovi <= 0, 
+                                              'high-low', 
+                                       ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                              combined_stats$lag_sovi > 0,
+                                              'low-high',NA))))
+
+```
+
+
+```{r}
+
+# map all of the results here
+tm_shape(combined_stats) +
+    tm_fill(col = 'quad_non_sig', palette = c("#de2d26", "#fee0d2", "#deebf7", "#3182bd"))
+
+```
+
+
+
+
+2. BIOPHYSICAL VULNERABILITY TO WILDFIRES IN ENGLAND AND WALES
+
+
+2.1. Importing Fire in the UK 
+
+
+```{r}
+
+fire_modis_all <- read_sf(here::here("Data/Biophysical Vulnerability /Fire Data from 2001/DL_FIRE_M-C61_365034/fire_archive_M-C61_365034.shp"))
+
+fire_modis_all$year <- year(fire_modis_all$ACQ_DATE)
+
+fire_modis_all <- fire_modis_all %>%
+  filter(., year != 2001)%>%
+  mutate(., month = month(ymd(ACQ_DATE)))
+
+```
+
+
+
+```{r}
+
+  tm_shape(fire_modis_all) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_layout(frame = FALSE)
+
+```
+
+```{r}
+
+fire_modis_all_yearly <- fire_modis_all %>%
+  group_by(year) %>%
+  summarise(num_wildfires = n())
+
+
+
+```
+
+```{r}
+
+# Create the line chart
+ggplot(fire_modis_all_yearly, aes(x = year, y = num_wildfires)) +
+  geom_line() +
+  labs(x = "Year", y = "Number of Wildfires") +
+  ggtitle("Number of Wildfires Over Years") +
+  scale_x_continuous(breaks = as.integer(fire_modis_all_yearly$year))
+
+  theme_minimal()
+
+```
+
+
+```{r}
+
+fire_month_modis <- fire_modis_all %>%
+  group_by(month) %>%
+  summarise(num_wildfires_m = n())
+
+```
+
+```{r}
+fire_month_modis$month <- as.integer(as.character(fire_month_modis$month))
+
+```
+
+```{r}
+
+ggplot(fire_month_modis, aes(x = month, y = num_wildfires_m)) + 
+  geom_col(binwidth = 10000, color = "white", fill = "#e34a33", alpha = 0.6) +
+  labs(title = "Fires Over Months from 2003 to 2022", x = "Months", y = "Count", size = 10) +
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 9)) +
+  theme(axis.title.y = element_text(size = 9)) +
+  theme(plot.title = element_text(face = "bold", size = 11, hjust = 0.5)) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb)  # Set breaks and labels
+
+
+```
+
+```{r}
+
+fire_modis_engwales <- st_intersection(fire_modis_all, england_wales_wgs84)
+
+```
+
+
+
+
+```{r}
+
+fire_modis_engwales_yearly <- fire_modis_engwales %>%
+  group_by(year) %>%
+  summarise(num_wildfires = n())
+
+
+```
+
+```{r}
+
+
+ggplot(fire_modis_engwales_yearly, aes(x = year, y = num_wildfires)) +
+  geom_line(color = "red") +
+  geom_hline(aes(yintercept = num_wildfires), color = "gray", linetype = "dotted") +
+  geom_vline(aes(xintercept = year), color = "gray", linetype = "dotted") +
+  labs(x = "Year", y = "Number of Wildfires") +
+  ggtitle("Number of Wildfires Over Years") +
+  scale_x_continuous(breaks = as.integer(fire_modis_all_yearly$year)) +
+  theme_minimal() +
+  theme(
+    axis.line = element_line(color = "black"),
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 14),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "transparent", color = NA),
+    plot.background = element_rect(fill = "transparent", color = NA),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 12)
+  )
+
+```
+
+
+
+```{r}
+
+fire_modis_engwales_months <- fire_modis_engwales %>%
+  group_by(month) %>%
+  summarise(num_wildfires_m = n())
+
+```
+
+```{r}
+fire_modis_engwales_months$month <- as.integer(as.character(fire_modis_engwales_months$month))
+
+```
+
+```{r}
+
+ggplot(fire_modis_engwales_months, aes(x = month, y = num_wildfires_m)) + 
+  geom_col(binwidth = 10000, color = "white", fill = "#e34a33", alpha = 0.6) +
+  labs(title = "Fires Over Months from 2002 to 2022", x = "Months", y = "Count", size = 10) +
+  theme_classic() +
+  theme(axis.title.x = element_text(size = 9)) +
+  theme(axis.title.y = element_text(size = 9)) +
+  theme(plot.title = element_text(face = "bold", size = 11, hjust = 0.5)) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb)  # Set breaks and labels
+
+
+
+```
+
+
+
+
+```{r}
+
+  tm_shape(fire_modis_engwales) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_shape(england_wales_wgs84)+
+  tm_borders(col="black",lwd=1)
+  tm_layout(frame = FALSE)
+
+```
+
+```{r}
+
+
+
+  tm_shape(fire_modis_engwales) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Data Source: Office for National Statistics licensed under the Open Government Licence v.1.0.", position=c(0.38,0.084), size=0.5)+
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+
+
+```
+
+
+
+
+
+```{r}
+
+fire_modis_engwales_spring <- fire_modis_engwales %>%
+  
+  filter(., month == 3 | month == 4 | month == 5)
+
+```
+
+```{r}
+
+fire_modis_engwales_summer <- fire_modis_engwales %>%
+  
+  filter(., month == 6 | month == 7 | month == 8 | month == 9)
+
+```
+
+
+```{r}
+  fires_spring <- tm_shape(fire_modis_engwales_spring) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+  tmap_save(fires_spring, filename = "fires_spring.png",dpi = 300)
+
+```
+
+
+
+
+```{r}
+
+# Check the current CRS of the MSOA layer
+
+# Set the CRS of fire_modis_engwales_spring to match the CRS of the MSOA layer
+fire_modis_engwales_spring1 <- st_transform(fire_modis_engwales_spring, crs = st_crs(msoa))
+
+
+# Spatial join to assign fire points to MSOAs
+fires_in_msoa_spring <- st_join(msoa, fire_modis_engwales_spring1, join = st_intersects)
+
+
+# Summarize number of fires per MSOA
+fires_summary <- fires_in_msoa_spring %>%
+  group_by(msoa_code) %>%
+  summarize(total_fires = n())
+
+# Calculate the area of each MSOA polygon in square meters
+fires_summary$area_m2 <- st_area(msoa)
+
+
+
+fires_summary$area_m2 <- as.numeric(fires_summary$area_m2)
+
+# Convert the area from square meters to square kilometers
+fires_summary <- fires_summary %>%
+  mutate(area_km2 = area_m2/ 1e6)  # Calculate the area in km²
+
+# Calculate fires per km²
+fires_summary <- fires_summary %>%
+  mutate(fires_per_km2 = total_fires / area_km2)
+
+
+
+```
+
+
+
+
+```{r}
+
+
+# Create the map with a choropleth representation
+tm_shape(fires_summary) +
+  tm_fill(col = "fires_per_km2", palette = "YlOrRd")
+
+```
+
+
+
+```{r}
+ fires_summer <- tm_shape(fire_modis_engwales_summer) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+  tmap_save(fires_summer, filename = "fires_summer.png",dpi = 300)
+
+```
+
+INDEPENDENT VARIABLES
+
+1. TOPOGRAPHY
+
+```{r}
+
+# Load necessary packages
+library(raster)
+library(fs)
+
+# Read the elevation raster
+elevation_raster <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Topography/Elevation/wc2.1_2.5m_elev.tif")
+
+elevation_engwales <- crop(elevation_raster, england_wales_wgs84)
+elevation_engwales1 <- mask(elevation_engwales, england_wales_wgs84)
+
+
+
+```
+
+```{r}
+
+
+filled_elevation <- focal(elevation_engwales, w=matrix(1, nrow=3, ncol=3), fun=mean, na.rm=TRUE)
+  
+  # Replace the missing values in the original raster with the filled values
+elevation_engwales[is.na(elevation_engwales)] <- filled_elevation[is.na(elevation_engwales)]
+
+
+```
+
+
+```{r}
+has_missing_values <- any(is.na(elevation_engwales[]))
+
+```
+
+
+
+```{r}
+  
+  tm_shape(elevation_engwales) +
+  tm_raster(style = "cont", title = "Elevation", palette= "-Spectral", midpoint = NA)+
+  tm_shape(fire_modis_engwales_spring) +
+  tm_dots(col = "red", size = 0.05, shape = 16, border.col = "black", title = "Wildfires") +
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"))
+
+
+```
+
+
+```{r}
+
+
+# Calculate slope using the terrain function
+slope_raster <- terrain(elevation_engwales, opt = "slope")
+
+# Calculate aspect using the terrain function
+aspect_raster <- terrain(elevation_engwales, opt = "aspect")
+
+
+
+```
+
+
+
+
+```{r}
+slope_crop <- crop(slope_raster, england_wales_wgs84)
+slope_mask <- mask(slope_crop,england_wales_wgs84)
+```
+
+
+```{r}
+
+slope_map <-tm_shape(slope_mask) +
+  tm_raster(style = "cont", title = "Slope", palette = "-Spectral", midpoint = NA) +
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: Shuttle Radar Topography Mission (SRTM)", position=c(0.38,0.064), size=0.7)
+  tmap_save(slope_map, filename = "slope.png",dpi = 300)
+
+
+
+
+```
+
+```{r}
+aspect_crop <- crop(aspect_raster, england_wales_wgs84)
+aspect_mask <- mask(aspect_crop,england_wales_wgs84)
+```
+
+
+
+```{r}
+
+aspect_map <- tm_shape(aspect_mask) +
+  tm_raster(style = "cont", title = "Aspect", palette = "-Spectral", midpoint = NA) +
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom")) +
+    tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: Shuttle Radar Topography Mission (SRTM)", position=c(0.38,0.064), size=0.7)
+  tmap_save(aspect_map, filename = "aspect.png",dpi = 300)
+
+
+
+```
+
+
+2. CLIMATOLOGICAL VARIABLES
+
+2.1. Maximum Temperature
+
+```{r}
+
+# Set the path to the folders containing the temperature files
+folder_2000_2009 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Max Temp/tmax_2000-2009")
+folder_2010_2019 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Max Temp/tmax_2010-2019")
+folder_2020_2021 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Max Temp/tmax_2020-2021")
+
+# Function to calculate average temperature for a given season
+calculate_seasonal_average <- function(folder_path, season_start, season_end) {
+  # Get the list of files in the folder
+  files <- fs::dir_ls(folder_path, regexp = "\\.tif$")
+  
+  # Filter files for the specified season
+  season_files <- files[grepl(paste0("wc2.1_2.5m_tmax_", season_start, "|", season_end), files)]
+  
+  # Read the raster files
+  rasters <- lapply(season_files, raster)
+  
+  # Stack the rasters
+  stacked_raster <- stack(rasters)
+  
+  # Calculate the average temperature across the stack
+  avg_temperature <- mean(stacked_raster, na.rm = TRUE)
+  
+  # Return the average temperature
+  return(avg_temperature)
+}
+
+# Specify the start and end months for spring and summer
+spring_start <- "03"  # March
+spring_end <- "05"    # May
+summer_start <- "06"  # June
+summer_end <- "08"    # August
+
+# Calculate average temperature for spring and summer in each folder
+spring_avg_2000_2009 <- calculate_seasonal_average(folder_2000_2009, spring_start, spring_end)
+summer_avg_2000_2009 <- calculate_seasonal_average(folder_2000_2009, summer_start, summer_end)
+
+spring_avg_2010_2019 <- calculate_seasonal_average(folder_2010_2019, spring_start, spring_end)
+summer_avg_2010_2019 <- calculate_seasonal_average(folder_2010_2019, summer_start, summer_end)
+
+spring_avg_2020_2021 <- calculate_seasonal_average(folder_2020_2021, spring_start, spring_end)
+summer_avg_2020_2021 <- calculate_seasonal_average(folder_2020_2021, summer_start, summer_end)
+
+
+
+
+```
+
+```{r}
+
+# Stack the raster layers
+raster_stack_spring <- stack(spring_avg_2000_2009, spring_avg_2010_2019, summer_avg_2020_2021)
+
+# Calculate the average
+avg_tmax_spring <- mean(raster_stack_spring)
+
+
+```
+
+```{r}
+
+# Stack the raster layers
+raster_stack_summer <- stack(summer_avg_2000_2009, summer_avg_2010_2019, summer_avg_2020_2021)
+
+# Calculate the average
+avg_tmax_summer <- mean(raster_stack_summer)
+
+```
+
+
+```{r}
+
+avg_tmax_summer_engwales <- crop(avg_tmax_summer, england_wales_wgs84)
+avg_tmax_summer_engwales1 <- mask(avg_tmax_summer_engwales,england_wales_wgs84)
+
+
+avg_tmax_spring_engwales <- crop(avg_tmax_spring, england_wales_wgs84)
+avg_tmax_spring_engwales1 <- mask(avg_tmax_spring_engwales,england_wales_wgs84)
+
+
+```
+
+
+```{r}
+
+tm_shape(avg_tmax_summer_engwales1) +
+  tm_raster(style = "cont", title = "Celsius", palette= "Oranges")+
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"), title = "A")
+
+```
+
+
+```{r}
+
+tm_shape(avg_tmax_spring_engwales1) +
+  tm_raster(style = "cont", title = "Celsius", palette= "Oranges")+
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"), title = "A")
+
+```
+
+
+2.2. Minumum Temperature
+
+```{r}
+
+
+# Set the path to the folders containing the temperature files
+folder_2000_2009 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Min Temperature/tmin_2000-2009")
+folder_2010_2019 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Min Temperature/tmin_2010-2019")
+folder_2020_2021 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Min Temperature/tmin_2020-2021")
+
+# Function to calculate average temperature for a given season excluding 2000 and 2001
+calculate_seasonal_average <- function(folder_path, season_start, season_end) {
+  # Get the list of files in the folder
+  files <- fs::dir_ls(folder_path, regexp = "\\.tif$")
+  
+  # Filter files for the specified season and exclude 2000 and 2001
+  season_files <- files[grepl(paste0("wc2.1_2.5m_tmin_", season_start, "|", season_end), files)]
+  
+  # Read the raster files
+  rasters <- lapply(season_files, raster)
+  
+  # Stack the rasters
+  stacked_raster <- stack(rasters)
+  
+  # Calculate the average temperature across the stack
+  avg_temperature <- mean(stacked_raster, na.rm = TRUE)
+  
+  # Return the average temperature
+  return(avg_temperature)
+}
+
+# Calculate average temperature for spring and summer in each folder excluding 2000 and 2001
+spring_avg_2000_2009_min <- calculate_seasonal_average(folder_2000_2009, spring_start, spring_end)
+summer_avg_2000_2009_min <- calculate_seasonal_average(folder_2000_2009, summer_start, summer_end)
+
+spring_avg_2010_2019_min <- calculate_seasonal_average(folder_2010_2019, spring_start, spring_end)
+summer_avg_2010_2019_min <- calculate_seasonal_average(folder_2010_2019, summer_start, summer_end)
+
+spring_avg_2020_2021_min <- calculate_seasonal_average(folder_2020_2021, spring_start, spring_end)
+summer_avg_2020_2021_min <- calculate_seasonal_average(folder_2020_2021, summer_start, summer_end)
+
+
+
+# Stack the raster layers
+raster_stack_spring_min <- stack(spring_avg_2000_2009_min, spring_avg_2010_2019_min, summer_avg_2020_2021_min)
+
+# Calculate the average
+avg_tmin_spring <- mean(raster_stack_spring_min)
+
+
+# Stack the raster layers
+raster_stack_summer_min <- stack(summer_avg_2000_2009_min, summer_avg_2010_2019_min, summer_avg_2020_2021_min)
+
+# Calculate the average
+avg_tmin_summer <- mean(raster_stack_summer_min)
+
+
+```
+
+
+```{r}
+
+avg_tmin_summer_engwales <- crop(avg_tmin_summer, england_wales_wgs84)
+
+avg_tmin_summer_engwales1 <- mask(avg_tmin_summer_engwales,england_wales_wgs84)
+
+
+avg_tmin_spring_engwales <- crop(avg_tmin_spring, england_wales_wgs84)
+
+avg_tmin_spring_engwales1 <- mask(avg_tmin_spring_engwales,england_wales_wgs84)
+
+
+```
+
+```{r}
+
+# Stack the raster layers
+raster_stack_srping_average <- stack(avg_tmax_spring_engwales, avg_tmin_spring_engwales )
+
+# Calculate the average
+avg_spring_temp<- mean(raster_stack_srping_average)
+
+```
+
+
+```{r}
+
+geometric_mean_summer <- overlay(avg_tmin_summer_engwales, avg_tmax_summer_engwales, fun=function(x, y) sqrt(x * y))
+
+
+```
+
+```{r}
+
+geometric_mean_spring <- overlay(avg_tmin_spring_engwales, avg_tmax_spring_engwales, fun=function(x, y) sqrt(x * y))
+
+
+```
+
+
+```{r}
+
+geometric_mean_spring1 <- crop(geometric_mean_spring, england_wales_wgs84)
+geometric_mean_spring2 <- mask(geometric_mean_spring,england_wales_wgs84)
+
+```
+
+```{r}
+
+avg_spring_temp_map <- tm_shape(geometric_mean_spring2) +
+  tm_raster(style = "cont", title = "Celsius", palette= "Oranges")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(avg_spring_temp_map, filename = "avg_temp_spring_map.png",dpi = 300)
+
+
+```
+
+
+
+```{r}
+
+# Stack the raster layers
+raster_stack_summer_average <- stack(avg_tmax_summer_engwales, avg_tmin_summer_engwales )
+
+# Calculate the average
+avg_summer_temp<- mean(raster_stack_summer_average)
+
+```
+
+
+
+
+```{r}
+
+tm_shape(avg_tmin_summer_engwales) +
+  tm_raster(style = "cont", title = "Celsius", palette= "Oranges")+
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"), title = "A")
+
+```
+
+
+```{r}
+
+avg_tmin_summer_engwales_map <- crop(avg_tmin_summer_engwales, england_wales_wgs84)
+avg_tmin_summer_engwales_map <- mask(avg_tmin_summer_engwales_map,england_wales_wgs84)
+
+```
+
+
+```{r}
+
+avg_temp_summer_map <- tm_shape(avg_tmin_summer_engwales_map) +
+  tm_raster(style = "cont", title = "Celsius", palette= "Oranges")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(avg_temp_summer_map, filename = "avg_temp_summer_map.png",dpi = 300)
+
+
+```
+
+
+
+2.3. Precipitation
+
+```{r}
+
+# Set the path to the folders containing the temperature files
+folder_2000_2009 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Precipitation/prec_2000-2009")
+folder_2010_2019 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Precipitation/prec_2010-2019")
+folder_2020_2021 <- fs::path("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Precipitation/prec_2020-2021")
+
+# Function to calculate average temperature for a given season excluding 2000 and 2001
+calculate_seasonal_average <- function(folder_path, season_start, season_end) {
+  # Get the list of files in the folder
+  files <- fs::dir_ls(folder_path, regexp = "\\.tif$")
+  
+  # Filter files for the specified season and exclude 2000 and 2001
+  season_files <- files[grepl(paste0("wc2.1_2.5m_prec_", season_start, "|", season_end), files)]
+  
+  # Read the raster files
+  rasters <- lapply(season_files, raster)
+  
+  # Stack the rasters
+  stacked_raster <- stack(rasters)
+  
+  # Calculate the average temperature across the stack
+  avg_prec <- mean(stacked_raster, na.rm = TRUE)
+  
+  # Return the average precipitation
+  return(avg_prec)
+}
+
+# Calculate average temperature for spring and summer in each folder excluding 2000 and 2001
+spring_avg_2000_2009_prec <- calculate_seasonal_average(folder_2000_2009, spring_start, spring_end)
+summer_avg_2000_2009_prec <- calculate_seasonal_average(folder_2000_2009, summer_start, summer_end)
+
+spring_avg_2010_2019_prec <- calculate_seasonal_average(folder_2010_2019, spring_start, spring_end)
+summer_avg_2010_2019_prec <- calculate_seasonal_average(folder_2010_2019, summer_start, summer_end)
+
+spring_avg_2020_2021_prec <- calculate_seasonal_average(folder_2020_2021, spring_start, spring_end)
+summer_avg_2020_2021_prec <- calculate_seasonal_average(folder_2020_2021, summer_start, summer_end)
+
+
+
+# Stack the raster layers
+raster_stack_spring_prec <- stack(spring_avg_2000_2009_prec, spring_avg_2010_2019_prec, summer_avg_2020_2021_prec)
+
+# Calculate the average
+avg_prec_spring <- mean(raster_stack_spring_prec)
+
+
+# Stack the raster layers
+raster_stack_summer_prec <- stack(summer_avg_2000_2009_prec, summer_avg_2010_2019_prec, summer_avg_2020_2021_prec)
+
+# Calculate the average
+avg_prec_summer <- mean(raster_stack_summer_prec)
+
+
+```
+
+```{r}
+
+avg_prec_summer_engwales <- crop(avg_prec_summer, england_wales_wgs84)
+
+avg_prec_summer_engwales1 <- mask(avg_prec_summer_engwales,england_wales_wgs84)
+
+
+avg_prec_spring_engwales <- crop(avg_prec_spring, england_wales_wgs84)
+
+avg_prec_spring_engwales1 <- mask(avg_prec_spring_engwales,england_wales_wgs84)
+
+
+```
+
+
+```{r}
+
+avg_prec_spring_engwales1_map <- tm_shape(avg_prec_spring_engwales1 ) +
+  tm_raster(style = "cont", title = "mm", palette= "Blues")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(avg_prec_spring_engwales1_map, filename = "avg_prec_spring_engwales1_map.png",dpi = 300)
+
+```
+
+```{r}
+
+avg_prec_summer_engwales1_map <- tm_shape(avg_prec_summer_engwales1) +
+  tm_raster(style = "cont", title = "mm", palette= "Blues")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(avg_prec_summer_engwales1_map, filename = "avg_prec_summer_engwales1_map.png",dpi = 300)
+
+```
+
+```{r}
+
+tm_shape(avg_prec_spring_engwales) +
+  tm_raster(style = "cont", title = "mm", palette= "Blues")+
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"), title = "A")
+
+```
+
+2.4. Wind Speed
+
+```{r}
+
+wind_globe_3 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_03.tif")
+wind_globe_4 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_04.tif")
+wind_globe_5 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_05.tif")
+
+
+# Stack the raster layers
+wind_stack_spring <- stack(wind_globe_3,wind_globe_4, wind_globe_5)
+
+# Calculate the average
+avg_wind_spring <- mean(wind_stack_spring)
+
+
+avg_wind_sping_engwales <- crop(avg_wind_spring, england_wales_wgs84)
+
+```
+
+
+
+```{r}
+
+tm_shape(avg_wind_sping_engwales) +
+  tm_raster(style = "cont", title = "mm", palette= "Blues")+
+  tm_layout(frame = FALSE, legend.position = c("right", "top"), title.position = c("left", "bottom"), title = "A")
+
+```
+
+
+```{r}
+
+wind_globe_6 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_06.tif")
+wind_globe_7 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_07.tif")
+wind_globe_8 <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Climatological/Wind Speed/wc2.1_2.5m_wind/wc2.1_2.5m_wind_08.tif")
+
+
+# Stack the raster layers
+wind_stack_summer <- stack(wind_globe_6,wind_globe_7, wind_globe_8)
+
+# Calculate the average
+avg_wind_summer <- mean(wind_stack_summer)
+
+
+avg_wind_summer_engwales <- crop(avg_wind_summer, england_wales_wgs84)
+
+```
+
+
+```{r}
+
+avg_wind_spring_engwales <- crop(avg_wind_spring, england_wales_wgs84)
+
+avg_wind_spring_engwales1 <- mask(avg_wind_spring_engwales,england_wales_wgs84)
+
+```
+
+```{r}
+
+avg_wind_summer_engwales <- crop(avg_wind_summer, england_wales_wgs84)
+
+avg_wind_summer_engwales1 <- mask(avg_wind_summer_engwales,england_wales_wgs84)
+
+```
+
+
+```{r}
+
+wind_spring <- tm_shape(avg_wind_spring_engwales1) +
+  tm_raster(style = "cont", title = "Wind Speed", palette= "Blues")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(wind_spring, filename = "wind_spring.png",dpi = 300)
+
+```
+
+```{r}
+
+wind_summer <- tm_shape(avg_wind_summer_engwales1) +
+  tm_raster(style = "cont", title = "Wind Speed", palette= "Blues")+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldClim", position=c(0.38,0.064), size=0.7)
+  tmap_save(wind_summer, filename = "wind_summer.png",dpi = 300)
+
+```
+
+
+VEGETATION COVER
+
+NDVI
+
+
+```{r}
+
+ndvi_file_summer <- "/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Vegetation Cover/NDVI/summer_ndvi.tif"
+ndvi_summer <- raster(ndvi_file_summer)
+
+ndvi_file_spring <- "/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Vegetation Cover/NDVI/spring_ndvi.tif"
+ndvi_spring <- raster(ndvi_file_spring)
+```
+
+
+```{r}
+
+
+ndvi_summer <- crop(ndvi_summer, england_wales_wgs84)
+
+ndvi_summer1 <- mask(ndvi_summer,england_wales_wgs84)
+
+
+ndvi_spring <- crop(ndvi_spring, england_wales_wgs84)
+
+ndvi_spring1 <- mask(ndvi_spring,england_wales_wgs84)
+
+
+```
+
+```{r}
+
+resampledRaster_ndvi <- projectRaster(ndvi_spring, avg_prec_spring_engwales, method = "ngb")
+```
+
+```{r}
+
+resampledRaster_ndvi_summer <- projectRaster(ndvi_summer, avg_prec_spring_engwales, method = "ngb")
+
+```
+
+
+```{r}
+
+
+filled_elevation <- focal(ndvi_spring, w=matrix(1, nrow=3, ncol=3), fun=mean, na.rm=TRUE)
+  
+  # Replace the missing values in the original raster with the filled values
+ndvi_spring[is.na(ndvi_spring)] <- filled_elevation[is.na(ndvi_spring)]
+
+```
+
+
+```{r}
+# Create a tmap object
+ndvi_tm <- tm_shape(ndvi_spring1)
+
+# Add the NDVI layer with the desired style and palette
+ndvi_tm <- ndvi_tm +
+  tm_raster(style = "cont", title = "NDVI", palette = "RdYlGn",midpoint = NA)
+
+# Customize the layout
+ndvi_tm <- ndvi_tm +
+  tm_layout(frame = FALSE, legend.position = c("right", "top"),
+            title.position = c("left", "bottom"))
+
+tm_view(ndvi_tm)
+
+
+```
+
+
+```{r}
+# Create a tmap object
+ndvi_tm <- tm_shape(resampledRaster_ndvi)
+
+# Add the NDVI layer with the desired style and palette
+ndvi_tm <- ndvi_tm +
+  tm_raster(style = "cont", title = "NDVI", palette = "RdYlGn",midpoint = NA)
+
+# Customize the layout
+ndvi_tm <- ndvi_tm +
+  tm_layout(frame = FALSE, legend.position = c("right", "top"),
+            title.position = c("left", "bottom"))
+
+tm_view(ndvi_tm)
+
+
+```
+
+
+
+```{r}
+
+ndvi_spring <- tm_shape(ndvi_spring1 ) +
+    tm_raster(style = "cont", title = "NDVI", palette = "RdYlGn",midpoint = NA)+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: MODIS obtained from Google Earth Engine", position=c(0.38,0.064), size=0.7)
+  tmap_save(ndvi_spring, filename = "ndvi_spring.png",dpi = 300)
+
+```
+
+```{r}
+
+
+ndvi_summer <- tm_shape(ndvi_summer1) +
+    tm_raster(style = "cont", title = "NDVI", palette = "RdYlGn",midpoint = NA)+
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: MODIS obtained from Google Earth Engine", position=c(0.38,0.064), size=0.7)
+  tmap_save(ndvi_summer, filename = "ndvi_summer.png",dpi = 300)
+
+
+```
+
+
+4. ANTROPOEGENIC
+
+4.1. Road
+
+```{r}
+
+
+road_uk <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Antro/Road/gbr_osm_dst_road_100m_2016.tif")
+
+
+```
+
+
+```{r}
+road_uk1 <- crop(road_uk, england_wales_wgs84)
+road_uk1 <- mask(road_uk1, england_wales_wgs84)
+
+
+```
+
+```{r}
+
+
+resampledRaster_road <- projectRaster(road_uk, avg_prec_spring_engwales, method = "ngb")
+
+
+```
+
+```{r}
+resampledRaster_road1 <- crop(resampledRaster_road, england_wales_wgs84)
+
+```
+
+
+```{r}
+
+road_map <- tm_shape(road_uk1) +
+    tm_raster(style = "cont", title = "Distance", palette = "Purples",midpoint = NA) +
+  tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.5,  # Increase the size of the legend title
+            legend.text.size = 1) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldPop", position=c(0.38,0.064), size=0.7)
+  tmap_save(road_map, filename = "roads_distance.png",dpi = 300)
+
+
+```
+
+
+
+
+4.2. Population Counts
+
+```{r}
+
+
+pop_count <- raster("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Biophysical Vulnerability /Biopyhsical Rasters/Antro/Population/gbr_ppp_2020_UNadj_constrained.tif")
+
+
+```
+
+
+
+```{r}
+
+pop_count1 <- crop(pop_count, england_wales_wgs84)
+pop_count1 <- mask(pop_count1, england_wales_wgs84)
+
+
+```
+
+```{r}
+
+
+resampledRaster_pop <- projectRaster(pop_count, avg_prec_spring_engwales, method = "ngb")
+
+
+```
+
+```{r}
+resampledRaster_pop1 <- crop(resampledRaster_pop , england_wales_wgs84)
+
+```
+
+```{r}
+resampledRaster_pop1[is.na(resampledRaster_pop1)] <- 0
+
+```
+
+```{r}
+
+
+pop_map <- tm_shape(pop_count1) +
+    tm_raster(style = "cont", title = "NDVI", palette = "-YlOrBr") +
+    tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=2.1)+
+  tm_layout(frame = FALSE,
+            legend.show = FALSE) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=2, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.5) +
+  tm_credits("Data Source: WorldPop", position=c(0.38,0.064), size=0.7)
+  tmap_save(pop_map, filename = "pop.png",dpi = 300)
+
+
+
+```
+
+
+
+
+SPRING WILDFIRE PREDICTION
+
+
+
+Raster Stack
+
+
+
+```{r}
+spring_stack <- stack(slope_raster, aspect_raster, geometric_mean_spring, avg_prec_spring_engwales, avg_wind_sping_engwales,resampledRaster_ndvi,resampledRaster_road,resampledRaster_pop1)
+names(spring_stack) <- c("Slope", "Aspect","Average Temperature", "Precipitation","Wind Speed", "NDVI","Proximity to Major Roads", "Population Counts")
+
+
+```
+
+```{r}
+
+# Calculate z-scores for each layer in the raster stack
+zscore_stack <- stack()
+
+# Iterate over each layer in the raster stack
+for (i in 1:nlayers(spring_stack)) {
+  layer <- spring_stack[[i]]
+  
+  # Calculate z-scores
+  zscore <- scale(layer)
+  
+  # Add z-score layer to the zscore_stack
+  zscore_stack <- addLayer(zscore_stack, zscore)
+}
+
+
+```
+
+Pseudo-background points as absence
+
+    
+
+```{r}
+
+# set the seed
+set.seed(20000430)
+# we need to coerce 'sf' object california_border into 'sp' object for spsample to work
+england_wales_sp <- as(england_wales_wgs84, Class = "Spatial")
+# here, spsample() generates twice number of fire occurrence points randomly within the border
+background_points_spring <- spsample(england_wales_sp, n=5475, "random")
+
+
+
+```
+
+
+
+```{r}
+
+# perform raster extraction from the environmental covariates on to points
+englandwales_fires_env <- raster::extract(zscore_stack, fire_modis_engwales_spring)
+background_points_env <- raster::extract(zscore_stack, background_points_spring)
+
+```
+
+```{r}
+
+# convert large matrix objects to data frame objects and add outcome `fire` indicator
+englandwales_fires_env <-data.frame(englandwales_fires_env,fire=1)
+background_points_env <-data.frame(background_points_env,fire=0)
+
+# View one of the data frame
+head(englandwales_fires_env, n=5)
+head(background_points_env, n=5)
+
+```
+
+```{r}
+# set same set.seed() as before
+set.seed(20000430)
+# using k-fold function to split data into 4 equal parts
+select <- kfold(englandwales_fires_env, 4)
+# 25% of the fire data use for testing the model
+englandwales_fires_env_test <- englandwales_fires_env[select==1,]
+# 75% of the fire data use for training the model
+englandwales_fires_env_train <- englandwales_fires_env[select!=1,]
+
+```
+
+
+```{r}
+
+# set same set.seed() as before
+set.seed(20000430)
+# repeat the process for the background points
+select <- kfold(background_points_env, 4)
+background_points_env_test <- background_points_env[select==1,]
+background_points_env_train <- background_points_env[select!=1,]
+
+
+
+```
+
+```{r}
+training_data <- rbind(englandwales_fires_env_train, background_points_env_train)
+testing_data <- rbind(englandwales_fires_env_test, background_points_env_test)
+
+
+```
+
+    
+```{r}
+library(randomForest)
+
+# Remove rows with null values from training data
+training_data <- training_data[complete.cases(training_data), ]
+
+# Remove rows with null values from testing data
+testing_data <- testing_data[complete.cases(testing_data), ]
+
+# Convert the target variable to a factor
+training_data$fire <- as.factor(training_data$fire)
+testing_data$fire <- as.factor(testing_data$fire)
+
+# Train the random forest model
+rf_model <- randomForest(fire ~ ., data = training_data)
+
+# Make predictions on the testing set
+predictions <- predict(rf_model, newdata = testing_data)
+
+# Evaluate the model performance
+confusion_matrix <- table(predictions, testing_data$fire)
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+precision <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+recall <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+# Print the evaluation metrics
+print(confusion_matrix)
+print(paste0("Accuracy: ", accuracy))
+print(paste0("Precision: ", precision))
+print(paste0("Recall: ", recall))
+print(paste0("F1 Score: ", f1_score))
+
+
+```
+
+
+```{r}
+
+
+# Calculate feature importance percentages
+importance <- importance(rf_model)
+importance_percent <- 100 * importance / sum(importance)
+importance_df <- data.frame(Feature = row.names(importance_percent), Importance = as.numeric(importance_percent))
+
+# Sort the feature importance in descending order
+importance_df <- importance_df[order(importance_df$Importance, decreasing = TRUE), ]
+
+# Create a horizontal bar chart of feature importance percentages
+p <- ggplot(importance_df, aes(x = Importance, y = reorder(Feature, Importance))) +
+  geom_bar(stat = "identity", width = 0.5, color = "black", fill = "lightblue") +
+  labs(title = "Random Forest Feature Importance for Spring",
+       x = "Importance (%)",
+       y = "Feature") +
+  theme(axis.text.y = element_text(hjust = 0),
+        panel.background = element_blank(),
+        panel.grid.minor = element_blank())
+
+# Add percentages as labels on the bars
+p <- p + geom_text(aes(label = sprintf("%.1f%%", Importance)), hjust = -0.1)
+
+
+# Save the plot as a PNG file
+ggsave("spring_random_feature_importance_plot.png", p, width = 10, height = 6, units = "in")
+
+
+```
+
+```{r}
+library(pROC)
+
+
+# Make predictions on the test data
+# Assuming you have your test data in a data frame called 'test_data'
+predictions <- predict(rf_model, newdata = testing_data, type = "prob")
+
+
+# Calculate the AUC
+# Assuming the response variable is binary (0 or 1)
+roc_obj <- roc(testing_data$fire, predictions[, 2])
+
+print(roc_obj)
+
+# Calculate coordinates for ROC curve
+specificities <- roc_obj$specificities
+sensitivities <- roc_obj$sensitivities
+
+# Combine coordinates into a data frame
+roc_df <- data.frame(Specificity = specificities, Sensitivity = sensitivities)
+
+ggplot(data = roc_df, aes(x = 1 - Specificity, y = Sensitivity)) +
+  geom_line(color = "red") +  # Setting the color to red
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)",
+       title = "ROC Curve") +
+  theme_minimal()
+
+```
+
+
+
+
+```{r}
+# Predict wildfire probabilities using the rf_model
+# Assuming the independent variables used for training the model are in the same order as the raster stack bands
+
+raster_df <- as.data.frame(zscore_stack)
+wildfire_probabilities <- predict(rf_model, raster_df , type = "prob")
+predicted_raster <- zscore_stack[[1]] # Copy the first layer from the original raster stack
+values(predicted_raster) <- wildfire_probabilities[, 2]
+
+```
+
+
+```{r}
+
+
+# Set some visualization options for the map
+tm_shape(predicted_raster) +
+  tm_raster(style = "cont", palette = "YlOrRd", legend.show = TRUE) +
+  tm_layout(legend.position = c("right", "bottom"), 
+            legend.bg.color = "white", 
+            legend.bg.alpha = 0.7)
+```
+
+
+
+```{r}
+
+
+predicted_raster_rf0 <- crop(predicted_raster, england_wales_wgs84)
+
+predicted_raster_rf00 <- mask(predicted_raster_rf0,england_wales_wgs84)
+```
+
+```{r}
+
+
+
+# 5. Visualize the wildfire risk probability map using tmap.
+RF_Predicted_Spring <- tm_shape(predicted_raster_rf00) +
+  tm_raster("Slope", palette = "YlOrRd", title = "Wildfire Probability",breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0))+
+    tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(RF_Predicted_Spring, filename = "RF_Predicted_Spring.png",dpi = 300)
+
+
+```
+
+
+Max Ent
+
+```{r}
+model_training <- maxent(x=training_data[,c(1:8)], p=training_data[,9], args=c("responsecurves"))
+```
+
+
+```{r}
+plot(model_training, pch=19, xlab = "Percentage [%]", cex=1.2)
+```
+
+```{r}
+
+# Assuming you have already loaded the required libraries and defined your variables
+
+# Calculate ROC curve using evaluate function
+cross_validation <- evaluate(p = testing_data[testing_data$fire == 1, ],
+                             a = testing_data[testing_data$fire == 0, ],
+                             model = model_training)
+
+
+
+```
+
+```{r}
+
+# Assuming you have your test data in a data frame called 'test_data'
+predictions <- predict(model_training, newdata = testing_data)
+
+# Calculate the AUC
+# Assuming the response variable is binary (0 or 1)
+roc_obj <- roc(testing_data$fire, predictions)
+
+print(roc_obj)
+
+# Calculate coordinates for ROC curve
+specificities <- 1 - roc_obj$specificities
+sensitivities <- roc_obj$sensitivities
+
+# Combine coordinates into a data frame
+roc_df <- data.frame(Specificity = specificities, Sensitivity = sensitivities)
+
+# Plot ROC curve using ggplot2
+library(ggplot2)
+ggplot(data = roc_df, aes(x = Specificity, y = Sensitivity)) +
+  geom_line() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)",
+       title = "ROC Curve for Maximum Entropy Model") +
+  theme_minimal()
+
+```
+
+
+
+```{r}
+prob_wildfire <- predict(model_training, zscore_stack)
+
+```
+
+
+
+```{r}
+# generate a publication-worthy figure
+# map of probability 
+tm_shape(prob_wildfire) +
+    tm_raster(title = "Predicted probability", palette = 'YlOrRd', style ='cont', breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0))+
+
+    tm_layout(main.title = "Predicted Probability of Wild Fire [%]", main.title.position = c(0.2, 0.7), title.size=3, legend.text.size = 1.1, 
+        legend.position = c(0.65, 0.55), legend.height= -0.3, legend.title.size = 1.1, frame='white')+
+    tm_scale_bar(position=c(0.02, 0.02), text.size = 1, breaks = c(0, 100, 200, 300))+
+    tm_compass(north = 0,type = 'arrow', position = c('right', 'top'), text.size = 0.9)
+```
+
+```{r}
+
+# calculate thresholds of models
+threshold_value <- threshold(cross_validation, "spec_sens")
+# report value
+threshold_value
+```
+
+```{r}
+# prepare threshold total map 
+create_classes_vector <- c(0, threshold_value, 0, threshold_value, 1, 1)
+create_clasess_matrix <- matrix(create_classes_vector, ncol = 3, byrow = TRUE)
+create_clasess_matrix
+```
+
+```{r}
+# create new reclassify raster based on prob_wildfires
+suitability_wildfires <- reclassify(prob_wildfire, create_clasess_matrix)
+```
+
+```{r}
+tm_shape(suitability_wildfires) + tm_raster(style = "cat", title = "Threshold", palette= c("lightgrey", "red"), labels = c("Safe", "Trigger Points")) +
+    tm_layout(frame = FALSE, legend.outside = TRUE)
+```
+
+Aggregation of Wildfire Probability obtained from Random Forest
+
+```{r}
+
+# 1. Extract wildfire risk probabilities for each MSOA
+msoa_probabilities <- raster::extract(predicted_raster, msoa, fun = mean, na.rm = TRUE, df = TRUE)
+
+
+# 2. Concatenate the extracted probabilities with the msoa layer
+msoa_with_probabilities <- cbind(msoa, msoa_probabilities)
+
+```
+
+
+```{r}
+# Calculate the mean value of the "Slope" column
+mean_slope <- mean(msoa_with_probabilities$Slope, na.rm = TRUE)
+
+# Replace the NaN values in the "Slope" column with the mean value
+msoa_with_probabilities$Slope[is.na(msoa_with_probabilities$Slope)] <- mean_slope
+```
+
+
+```{r}
+
+Aggregation_wildire <- tm_shape(msoa_with_probabilities) +
+  tm_fill("Slope",
+          title = "Wildfire Probability",
+          palette = 'YlOrRd', style ='cont', 
+          breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) +
+  tm_borders(col = "black", lwd = 0.02) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.60)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+
+ tmap_save(Aggregation_wildire, filename = "Wildfire.png",dpi = 300)
+
+
+```
+
+
+LINEAR REGRESSION
+
+```{r}
+
+regression_data<- cbind(combined_dataset, msoa_with_probabilities)
+
+
+
+```
+
+```{r}
+# lm() function builds a regression model and stores model output into the object 'modelMLR'
+modelMLR <- lm(Slope ~ scores.SoVI_z, data = regression_data)
+# Include the 'scipen=7' argument in the summary() function remove those annoying scientific notation!
+options(scipen = 7)
+# summary() calls report the output stored in object 'modelMLR'
+summary(modelMLR)
+```
+
+```{r}
+
+#creating a data frame from lr_model
+
+regression_data$RESIDUALS <- modelMLR$residuals
+
+
+```
+
+
+
+Spatial Autocorrelation of LR Residuals
+
+```{r}
+
+library(spdep)
+
+#generate unique number for each row
+regression_data$ROWNUM <- 1:nrow(regression_data)
+# We need to coerce the sf spatialdatafile object into a new sp object
+regression_data_2.0 <- as(regression_data, "Spatial")
+# Create spatial weights matrix for areas
+nb_knn <- knn2nb(knearneigh(coordinates(regression_data_2.0), k = 5))
+WeightsMatrix <- nb2mat(nb_knn, style = 'B')
+Residual_WeightMatrix <- mat2listw(WeightsMatrix, style = 'W')
+# Run the test on the regression model output object "modelMLR" using lm.morantest()
+moran.test(regression_data$RESIDUALS, Residual_WeightMatrix)
+
+
+```
+Geographically Weighted Regression
+
+```{r}
+
+# calculate the centroids from geometries
+regression_data_c<- st_centroid(regression_data)
+# insert coordinates into spatialdatafile note longitude column is X and latitude column is Y
+regression_data_c <- cbind(regression_data_c, st_coordinates(regression_data_c))
+
+```
+
+```{r}
+
+library("spgwr")
+library("car")
+
+# finding the bandwidth 
+BwG <- gwr.sel(Slope ~ scores.SoVI_z, data = regression_data_c, coords = cbind(regression_data_c$X, regression_data_c$Y), adapt = TRUE)
+
+# see optimal bandwidth
+BwG
+```
+
+
+```{r}
+# gwr() model. You need hatmatrix and se.fit specified as TRUE for testing statistical significance 
+gwr.model <- gwr(Slope ~ scores.SoVI_z, data = regression_data_c, coords = cbind(regression_data_c$X, regression_data_c$Y), adapt=BwG, hatmatrix=TRUE, se.fit=TRUE)
+gwr.model
+
+```
+
+
+```{r}
+# Assuming you have already fitted the GWR model and stored it in 'gwr.model'
+gwr_summary <- summary(gwr.model)
+
+# Access diagnostic measures from the summary
+print(gwr_summary)
+```
+
+```{r}
+
+gwr.data <- as.data.frame(gwr.model$SDF)
+
+```
+
+```{r}
+# create neat spatial data frame by keeping first two columns
+lsoa_result <- regression_data
+
+# insert coefficients into lsoa_result object
+lsoa_result$Coefsovi <- gwr.data[,"scores.SoVI_z"]
+lsoa_result$SEsovi <- gwr.data[,"scores.SoVI_z_se"]
+
+
+# insert localR2 estimates into lsoa_result object
+lsoa_result$localR2 <- gwr.data[,"localR2"]
+```
+
+```{r}
+colors <- c("#73add0", "#abd8e9", "#ffffbf", "#fdae61", "#d7191c")
+
+coefficient_spring <- tm_shape(lsoa_result) +
+tm_fill("Coefsovi",style = "jenks", palette = colors, midpoint=NA, title="Coefficient:SoVI") +
+  tm_borders(col = "black", lwd = 0.04) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.60)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(coefficient_spring, filename = "coefficient_spring.png",dpi = 300)
+```
+
+```{r}
+# compute t-score statistic
+lsoa_result$tstat_sovi <- lsoa_result$Coefsovi / lsoa_result$SEsovi
+# create significance column with: "Reduction: Significant", "Not Significant", "Increase: Significant" 
+lsoa_result$significant <- cut(lsoa_result$tstat_sovi,
+    breaks=c(min(lsoa_result$tstat_sovi), -2, 2, max(lsoa_result$tstat_sovi)),
+    labels=c("Reduction: Significant","Not Significant", "Increase: Significant"))
+```
+
+```{r}
+
+
+GWR_Significant_Spring <- tm_shape(lsoa_result) + 
+  tm_fill("significant", 
+          title = "", 
+          style = "cat", 
+          labels=c("Reduction: Significant", "Not Significant", "Increase: Significant"), 
+          palette = c("blue", "white", "red")) +
+  tm_borders(col = "black", lwd = 0.05) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.60)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.65),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(GWR_Significant_Spring, filename = "GWR_Significant_Spring.png",dpi = 300)
+
+
+
+```
+
+SUMMER WILDFIRE PREDICTION
+
+```{r}
+
+summer_stack <- stack(slope_raster, aspect_raster, geometric_mean_summer, avg_prec_summer_engwales, avg_wind_summer_engwales,resampledRaster_ndvi_summer,resampledRaster_road,resampledRaster_pop1)
+names(summer_stack) <- c("Slope", "Aspect","Avg Temperature", "Precipitation","Wind Speed", "NDVI","Proximity to Major","Population")
+
+
+```
+
+
+```{r}
+
+# Calculate z-scores for each layer in the raster stack
+zscore_stack_summer <- stack()
+
+# Iterate over each layer in the raster stack
+for (i in 1:nlayers(summer_stack)) {
+  layer_summer <- summer_stack[[i]]
+  
+  # Calculate z-scores
+  zscore_summer <- scale(layer_summer)
+  
+  # Add z-score layer to the zscore_stack
+  zscore_stack_summer <- addLayer(zscore_stack_summer, zscore_summer)
+}
+
+
+```
+
+
+
+```{r}
+
+# set the seed
+set.seed(20000430)
+# we need to coerce 'sf' object california_border into 'sp' object for spsample to work
+england_wales_sp <- as(england_wales_wgs84, Class = "Spatial")
+# here, spsample() generates twice number of fire occurrence points randomly within the border
+background_points_summer <- spsample(england_wales_sp, n=3157, "random")
+
+
+
+```
+
+
+```{r}
+
+# perform raster extraction from the environmental covariates on to points
+englandwales_fires_env1 <- raster::extract(zscore_stack_summer, fire_modis_engwales_summer)
+background_points_env1 <- raster::extract(zscore_stack_summer, background_points_summer)
+
+```
+
+
+```{r}
+
+# convert large matrix objects to data frame objects and add outcome `fire` indicator
+englandwales_fires_env1 <-data.frame(englandwales_fires_env1,fire=1)
+background_points_env1 <-data.frame(background_points_env1,fire=0)
+
+# View one of the data frame
+head(englandwales_fires_env1, n=5)
+head(background_points_env1, n=5)
+```
+
+```{r}
+# set same set.seed() as before
+set.seed(20000430)
+# using k-fold function to split data into 4 equal parts
+select <- kfold(englandwales_fires_env1, 4)
+# 25% of the fire data use for testing the model
+englandwales_fires_env_test1 <- englandwales_fires_env1[select==1,]
+# 75% of the fire data use for training the model
+englandwales_fires_env_train1 <- englandwales_fires_env1[select!=1,]
+
+```
+
+
+
+```{r}
+
+# set same set.seed() as before
+set.seed(20000430)
+# repeat the process for the background points
+select <- kfold(background_points_env1, 4)
+background_points_env_test1 <- background_points_env1[select==1,]
+background_points_env_train1 <- background_points_env1[select!=1,]
+
+
+
+```
+
+```{r}
+
+training_data1 <- rbind(englandwales_fires_env_train1, background_points_env_train1)
+testing_data1 <- rbind(englandwales_fires_env_test1, background_points_env_test1)
+
+
+```
+
+
+
+```{r}
+library(randomForest)
+
+# Remove rows with null values from training data
+training_data1 <- training_data1[complete.cases(training_data1), ]
+
+# Remove rows with null values from testing data
+testing_data1 <- testing_data1[complete.cases(testing_data1), ]
+
+# Convert the target variable to a factor
+training_data1$fire <- as.factor(training_data1$fire)
+testing_data1$fire <- as.factor(testing_data1$fire)
+
+# Train the random forest model
+rf_model1 <- randomForest(fire ~ ., data = training_data1)
+
+# Make predictions on the testing set
+predictions1 <- predict(rf_model1, newdata = testing_data1)
+
+# Evaluate the model performance
+confusion_matrix1 <- table(predictions1, testing_data1$fire)
+accuracy1 <- sum(diag(confusion_matrix1)) / sum(confusion_matrix1)
+precision1 <- confusion_matrix1[2, 2] / sum(confusion_matrix1[, 2])
+recall1 <- confusion_matrix1[2, 2] / sum(confusion_matrix1[2, ])
+f1_score1 <- 2 * (precision1 * recall1) / (precision1 + recall1)
+
+# Print the evaluation metrics
+print(confusion_matrix1)
+print(paste0("Accuracy: ", accuracy1))
+print(paste0("Precision: ", precision1))
+print(paste0("Recall: ", recall1))
+print(paste0("F1 Score: ", f1_score1))
+
+
+```
+
+
+```{r}
+
+library(randomForest)
+library(ggplot2)
+
+# Calculate feature importance percentages
+importance1 <- importance(rf_model1)
+importance_percent1 <- 100 * importance1 / sum(importance1)
+importance_df1 <- data.frame(Feature = row.names(importance_percent1), Importance = as.numeric(importance_percent1))
+
+# Sort the feature importance in descending order
+importance_df1 <- importance_df1[order(importance_df1$Importance, decreasing = TRUE), ]
+
+# Create a horizontal bar chart of feature importance percentages
+p <- ggplot(importance_df1, aes(x = Importance, y = reorder(Feature, Importance))) +
+  geom_bar(stat = "identity", width = 0.5, color = "black", fill = "lightblue") +
+  labs(title = "Random Forest Feature Importance for Summer",
+       x = "Importance (%)",
+       y = "Feature") +
+  theme(axis.text.y = element_text(hjust = 0),
+        panel.background = element_blank(),
+        panel.grid.minor = element_blank()) +
+  geom_text(aes(label = sprintf("%.1f%%", Importance)), hjust = -0.1)
+
+# Save the plot as a PNG file
+ggsave("summer_random_forest_feature_importance.png", p, width = 10, height = 6, units = "in")
+
+
+
+
+```
+
+```{r}
+library(pROC)
+
+
+# Make predictions on the test data
+# Assuming you have your test data in a data frame called 'test_data'
+predictions1 <- predict(rf_model1, newdata = testing_data1, type = "prob")
+
+
+# Calculate the AUC
+# Assuming the response variable is binary (0 or 1)
+roc_obj1 <- roc(testing_data1$fire, predictions1[, 2])
+
+print(roc_obj1)
+
+# Calculate coordinates for ROC curve
+specificities1 <- roc_obj1$specificities
+sensitivities1 <- roc_obj1$sensitivities
+
+# Combine coordinates into a data frame
+roc_df1 <- data.frame(Specificity = specificities1, Sensitivity = sensitivities1)
+
+ggplot(data = roc_df1, aes(x = 1 - Specificity, y = Sensitivity)) +
+  geom_line(color = "red") +  # Setting the color to red
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)",
+       title = "ROC Curve") +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Predict wildfire probabilities using the rf_model
+# Assuming the independent variables used for training the model are in the same order as the raster stack bands
+
+raster_df_summer <- as.data.frame(zscore_stack_summer)
+wildfire_probabilities_summer <- predict(rf_model1, raster_df_summer , type = "prob")
+predicted_raster_summer <- zscore_stack_summer[[1]] # Copy the first layer from the original raster stack
+values(predicted_raster_summer) <- wildfire_probabilities_summer[, 2]
+
+```
+
+```{r}
+
+predicted_raster_rf_summer <- crop(predicted_raster_rf_summer, england_wales_wgs84)
+
+predicted_raster_rf_summer1 <- mask(predicted_raster_rf_summer, england_wales_wgs84)
+```
+
+
+```{r}
+
+tm_shape(predicted_raster_summer) +
+  tm_raster()
+
+```
+
+```{r}
+
+predicted_raster_summer1 <- crop(predicted_raster_summer, england_wales_wgs84)
+
+predicted_raster_summer1 <- mask(predicted_raster_summer1,england_wales_wgs84)
+
+```
+
+
+```{r}
+
+
+
+# 5. Visualize the wildfire risk probability map using tmap.
+rf_summer <- tm_shape(predicted_raster_summer1) +
+  tm_raster("Slope", palette = "YlOrRd", title = "Wildfire Probability",breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0))+
+    tm_shape(england_regions) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+  tmap_save(rf_summer, filename = "rf_raster_summer.png",dpi = 300)
+
+
+```
+
+Aggregation of Wildfire Probability obtained from Random Forest
+
+```{r}
+
+# 1. Extract wildfire risk probabilities for each MSOA
+msoa_probabilities_summer <- raster::extract(predicted_raster_summer1, msoa, fun = mean, na.rm = TRUE, df = TRUE)
+
+
+# 2. Concatenate the extracted probabilities with the msoa layer
+msoa_with_probabilities_summer <- cbind(msoa, msoa_probabilities_summer)
+
+```
+
+
+
+```{r}
+
+# Calculate the mean value of the "Slope" column
+mean_slope_summer <- mean(msoa_with_probabilities_summer$Slope, na.rm = TRUE)
+
+# Replace the NaN values in the "Slope" column with the mean value
+msoa_with_probabilities_summer$Slope[is.na(msoa_with_probabilities_summer$Slope)] <- mean_slope_summer
+
+```
+
+
+```{r}
+
+Aggregation_wildfire_summer <- tm_shape(msoa_with_probabilities_summer) +
+  tm_fill("Slope",
+          title = "Wildfire Probability",
+          palette = 'YlOrRd', style ='cont', 
+          breaks = c(0, 0.2, 0.4, 0.6, 0.8, 1.0)) +
+  tm_borders(col = "black", lwd = 0.02) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.09,0.60),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+
+ tmap_save(Aggregation_wildfire_summer, filename = "Wildfire_summer.png",dpi = 300)
+
+
+```
+
+
+LINEAR REGRESSION
+
+```{r}
+
+regression_data_summer<- cbind(combined_dataset, msoa_with_probabilities_summer)
+
+
+
+```
+
+```{r}
+# lm() function builds a regression model and stores model output into the object 'modelMLR'
+modelMLR1 <- lm(Slope ~ scores.SoVI_z, data = regression_data_summer)
+# Include the 'scipen=7' argument in the summary() function remove those annoying scientific notation!
+options(scipen = 7)
+# summary() calls report the output stored in object 'modelMLR'
+summary(modelMLR1)
+```
+
+```{r}
+
+#creating a data frame from lr_model
+
+regression_data_summer$RESIDUALS <- modelMLR1$residuals
+
+
+```
+
+
+Spatial Autocorrelation of LR Residuals
+
+```{r}
+
+library(spdep)
+
+#generate unique number for each row
+regression_data_summer$ROWNUM <- 1:nrow(regression_data_summer)
+# We need to coerce the sf spatialdatafile object into a new sp object
+regression_data_summer2 <- as(regression_data_summer, "Spatial")
+# Create spatial weights matrix for areas
+nb_knn <- knn2nb(knearneigh(coordinates(regression_data_summer2), k = 5))
+WeightsMatrix <- nb2mat(nb_knn, style = 'B')
+Residual_WeightMatrix <- mat2listw(WeightsMatrix, style = 'W')
+# Run the test on the regression model output object "modelMLR" using lm.morantest()
+moran.test(regression_data_summer$RESIDUALS, Residual_WeightMatrix)
+
+
+```
+
+
+Geographically Weighted Regression
+
+```{r}
+
+# calculate the centroids from geometries
+regression_data_summer_c<- st_centroid(regression_data_summer)
+# insert coordinates into spatialdatafile note longitude column is X and latitude column is Y
+regression_data_summer_c <- cbind(regression_data_summer_c, st_coordinates(regression_data_summer_c))
+
+```
+
+```{r}
+
+library("spgwr")
+library("car")
+
+# finding the bandwidth 
+BwG1 <- gwr.sel(Slope ~ scores.SoVI_z, data = regression_data_summer_c, coords = cbind(regression_data_summer_c$X, regression_data_summer_c$Y), adapt = TRUE)
+
+# see optimal bandwidth
+BwG1
+```
+
+
+```{r}
+# gwr() model. You need hatmatrix and se.fit specified as TRUE for testing statistical significance 
+gwr.model1 <- gwr(Slope ~ scores.SoVI_z, data = regression_data_summer_c, coords = cbind(regression_data_summer_c$X, regression_data_summer_c$Y), adapt=BwG1, hatmatrix=TRUE, se.fit=TRUE)
+gwr.model1
+
+```
+
+
+
+
+
+
+
+
+```{r}
+
+gwr.data1 <- as.data.frame(gwr.model1$SDF)
+
+```
+
+```{r}
+# create neat spatial data frame by keeping first two columns
+lsoa_result1 <- regression_data_summer
+
+# insert coefficients into lsoa_result object
+lsoa_result1$CoefSlope <- gwr.data1[,"scores.SoVI_z"]
+lsoa_result1$SESlope <- gwr.data1[,"scores.SoVI_z_se"]
+
+
+# insert localR2 estimates into lsoa_result object
+lsoa_result1$localR2 <- gwr.data1[,"localR2"]
+```
+
+```{r}
+
+colors <- c("#73add0", "#abd8e9", "#ffffbf", "#fdae61", "#d7191c")
+
+coefficient_summer <- tm_shape(lsoa_result1) +
+tm_fill("CoefSlope",style = "jenks", palette = colors, midpoint=NA,, title="Coefficient:SoVI") +
+  tm_borders(col = "black", lwd = 0.04) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(coefficient_summer, filename = "coefficient_summer.png",dpi = 300)
+
+```
+
+```{r}
+
+tm_shape(lsoa_result1) +
+tm_fill("localR2",style = "jenks", palette = "", midpoint=0,, title="R2")
+
+```
+
+
+
+```{r}
+# compute t-score statistic
+lsoa_result1$tstatSlope <- lsoa_result1$CoefSlope / lsoa_result1$SESlope
+# create significance column with: "Reduction: Significant", "Not Significant", "Increase: Significant" 
+lsoa_result1$significant <- cut(lsoa_result1$tstatSlope,
+    breaks=c(min(lsoa_result1$tstatSlope), -2, 2, max(lsoa_result1$tstatSlope)),
+    labels=c("Reduction: Significant","Not Significant", "Increase: Significant"))
+```
+
+```{r}
+
+
+GWR_Significant_Summer <- tm_shape(lsoa_result1) + 
+  tm_fill("significant", 
+          title = "", 
+          style = "cat", 
+          labels=c("Reduction: Significant", "Not Significant", "Increase: Significant"), 
+          palette = c("blue", "white", "red")) +
+  tm_borders(col = "black", lwd = 0.05) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.65),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(GWR_Significant_Summer, filename = "GWR_Significant_Summer.png",dpi = 300)
+
+
+
+```
+
+
+FINDING COMMON MSOAs BETWEEN SPRING AND SUMMER
+
+```{r}
+
+# Convert one of the datasets into non-spatial data
+lsoa_result_nonspatial <- lsoa_result %>%
+  st_set_geometry(NULL)
+
+# Left join the datasets based on their commonalities
+merged_data_common<- left_join(lsoa_result1, lsoa_result_nonspatial, by = "msoa_code")
+
+# Create a new column indicating increase in both spring and summer
+merged_data_common <- merged_data_common %>%
+  mutate(increase_both = ifelse(significant.x == "Increase: Significant" & significant.y == "Increase: Significant", "increase_both", "not_increase_both"))
+
+# Create a new column indicating significant change categories
+merged_data_common <- merged_data_common %>%
+  mutate(change_category = case_when(
+    significant.x == "Increase: Significant" & significant.y == "Increase: Significant" ~ "increase_both",
+    significant.x == "Increase: Significant" & significant.y != "Increase: Significant" ~ "increase_spring",
+    significant.x != "Increase: Significant" & significant.y == "Increase: Significant" ~ "increase_summer",
+    TRUE ~ "other_changes"
+  ))
+
+# Now merged_data_sf contains the merged spatial dataset with the new column indicating increase in both spring and summer.
+
+
+```
+
+```{r}
+
+
+common_map <- tm_shape(merged_data_common) + 
+  tm_fill("change_category", 
+          style = "cat",
+          palette = c("#fdae61", "#9fe2bf", "#abd8e9","white"),
+          labels=c("Increase in Both Seasons", "Increase in Only Summer", "Increase in Only Spring","Other Changes"),
+          title="Legend")+
+
+  tm_borders(col = "black", lwd = 0.05) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.65),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(common_map, filename = "common_map.png",dpi = 300)
+
+
+
+```
+
+
+```{r}
+
+
+```
+
