@@ -7,14 +7,14 @@
 library(tidyverse)
 library(janitor)
 
-msoa <- read_csv("data/msoa/msoa_21.csv") |>
+msoa <- read_csv("inst/extdata/msoa/msoa_21.csv") |>
   select(
     msoa_code = MSOA21CD,
     msoa_name = MSOA21CD
   )
 
 # ---- Age ----
-age <- read_csv("data/age_msoa.csv") |>
+age <- read_csv("inst/extdata/age_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -43,7 +43,7 @@ age <- age |>
 
 
 # ---- Education ----
-edu_qualif <- read_csv("data/education/education_qualification_msoa.csv") |>
+edu_qualif <- read_csv("inst/extdata/education/education_qualification_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -56,7 +56,7 @@ edu_qualif <- read_csv("data/education/education_qualification_msoa.csv") |>
   mutate(no_qualification_normalised = (edu_qualif_number / population_msoa) * 100) |>
   select(msoa_code, no_qualification_normalised)
 
-edu_english <- read_csv("data/education/education_english_msoa.csv") |>
+edu_english <- read_csv("inst/extdata/education/education_english_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -75,7 +75,7 @@ edu_english <- read_csv("data/education/education_english_msoa.csv") |>
   select(msoa_code, english_normalised)
 
 # ---- Health ----
-health_disability <- read_csv("data/health/health_disability_msoa.csv") |>
+health_disability <- read_csv("inst/extdata/health/health_disability_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -93,7 +93,7 @@ health_disability <- read_csv("data/health/health_disability_msoa.csv") |>
   mutate(disabled_normalised = (total_disabled / population_msoa) * 100) |>
   select(msoa_code, disabled_normalised)
 
-health_longterm <- read_csv("data/health/health_longterm_msoa.csv") |>
+health_longterm <- read_csv("inst/extdata/health/health_longterm_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -112,7 +112,7 @@ health_longterm <- read_csv("data/health/health_longterm_msoa.csv") |>
   select(msoa_code, longtermhealth_normalised)
 
 # ---- Socioeconomic status ----
-socio_classify <- read_csv("data/socioeconomic/socio_occupation_msoa.csv") |>
+socio_classify <- read_csv("inst/extdata/socioeconomic/socio_occupation_msoa.csv") |>
   clean_names() |>
   select(
     msoa_code = middle_layer_super_output_areas_code,
@@ -132,7 +132,7 @@ socio_classify <- read_csv("data/socioeconomic/socio_occupation_msoa.csv") |>
   mutate(unemployed_neverworked_normalised = (unemployed_neverworked / population_msoa) * 100) |>
   select(msoa_code, unemployed_neverworked_normalised, lowoccupation_normalised)
 
-socio_unpaid <- read_csv("data/socioeconomic/socio_unpaid_msoa.csv") |>
+socio_unpaid <- read_csv("inst/extdata/socioeconomic/socio_unpaid_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
   unpaid_code = number_of_unpaid_carers_in_household_6_categories_code, 
@@ -151,7 +151,7 @@ socio_unpaid <- read_csv("data/socioeconomic/socio_unpaid_msoa.csv") |>
   select(msoa_code, unpaid_normalised)
 
 # ---- Household characteristics ----
-household_size <- read_csv("data/household/household_size_msoa.csv") |>
+household_size <- read_csv("inst/extdata/household/household_size_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
          size_code = household_size_5_categories_code,
@@ -165,7 +165,7 @@ household_size <- read_csv("data/household/household_size_msoa.csv") |>
   mutate(total_household = h0 + h1 + h2 + h3 + h4) |> 
   select(msoa_code, total_household)
 
-household_composition <- read_csv("data/household/household_composition_msoa.csv") |>
+household_composition <- read_csv("inst/extdata/household/household_composition_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
          comp_code = household_composition_15_categories_code,
@@ -185,7 +185,7 @@ household_composition <- read_csv("data/household/household_composition_msoa.csv
     singlefamily_all66_normalised, 
     loneparent_dependent_normalised)
 
-household_car <- read_csv("data/household/household_car_msoa.csv") |>
+household_car <- read_csv("inst/extdata/household/household_car_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
          car_code = car_or_van_availability_3_categories_code,
@@ -199,7 +199,7 @@ household_car <- read_csv("data/household/household_car_msoa.csv") |>
   select(msoa_code, nocar_normalised)
 
 # ---- Housing ----
-housing_tenure <- read_csv("data/housing/housing_tenure_msoa.csv") |>
+housing_tenure <- read_csv("inst/extdata/housing/housing_tenure_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code,
          tenure_code = tenure_of_household_7_categories_code,
@@ -217,7 +217,7 @@ housing_tenure <- read_csv("data/housing/housing_tenure_msoa.csv") |>
   mutate(privaterent_normalised = (privaterent_total / total_household) * 100) |>
   select(msoa_code, socialrent_normalised, privaterent_normalised)
 
-housing_occupancy <- read_csv("data/housing/housing_occupancy_rating_msoa.csv") |>
+housing_occupancy <- read_csv("inst/extdata/housing/housing_occupancy_rating_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
          occupancy_code = occupancy_rating_for_rooms_5_categories_code,
@@ -233,7 +233,7 @@ housing_occupancy <- read_csv("data/housing/housing_occupancy_rating_msoa.csv") 
   mutate(overcrowded_normalised = (overcrowded / total_household)*100) |>
   select(msoa_code, underoccupied_normalised, overcrowded_normalised)
 
-mobile_home <- read_csv("data/housing/mobile_home_msoa.csv") |>
+mobile_home <- read_csv("inst/extdata/housing/mobile_home_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code,
          mobile_code = accommodation_by_type_of_dwelling_9_categories_code,
@@ -246,7 +246,7 @@ mobile_home <- read_csv("data/housing/mobile_home_msoa.csv") |>
   select(msoa_code, mobile_normalised)
 
 # ---- Migration & Ethnicity ----
-migrant <- read_csv("data/migration_ethnicity/migration_msoa.csv") |>
+migrant <- read_csv("inst/extdata/migration_ethnicity/migration_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code,
          migrant_code = migrant_indicator_5_categories_code,
@@ -260,7 +260,7 @@ migrant <- read_csv("data/migration_ethnicity/migration_msoa.csv") |>
   mutate(migrant_outsideUK_normalised = (migrant_outsideUK / population_msoa)*100) |>
   select(msoa_code, migrant_insideUK_normalised, migrant_outsideUK_normalised)
 
-ethnicity <- read_csv("data/migration_ethnicity/ethnicity_msoa.csv") |>
+ethnicity <- read_csv("inst/extdata/migration_ethnicity/ethnicity_msoa.csv") |>
   clean_names() |>
   select(msoa_code = middle_layer_super_output_areas_code, 
          ethnic_code = ethnic_group_6_categories_code,

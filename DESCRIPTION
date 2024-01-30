@@ -2,8 +2,8 @@ Package: Wildfires
 Title: Mapping Risk and Resilience to wildfires in the UK
 Version: 0.0.0.9000
 Authors@R: 
-    person("Matteo", "Larrode", , "matteolarrode@redcross.org", role = c("aut", "cre")
-Description: Build an social vulnerability index using PCA and identify areas of high wildfire risk and high social vulnerability
+    person("Matteo", "Larrode", , "matteolarrode@redcross.org", role = c("aut", "cre"))
+Description: Build an social vulnerability index using PCA and identify areas of high wildfire risk and high social vulnerability.
 License: GPL (>= 3)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
