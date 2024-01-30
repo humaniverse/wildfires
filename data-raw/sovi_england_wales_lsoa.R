@@ -1,4 +1,4 @@
-# ---- Creation of socioeconomic vulnerability dataset for England & Wales ----
+# ---- Creation of Social Vulnerability dataset for England & Wales ----
 
 # Data sourced from Github repository:
 # https://anonymous.4open.science/r/Msc-Dissertation-60BC/
@@ -197,3 +197,106 @@ household_car <- read_csv("data/household/household_car_msoa.csv") |>
   left_join(household_size) |>
   mutate(nocar_normalised = (nocar / total_household)* 100) |>
   select(msoa_code, nocar_normalised)
+
+# ---- Housing ----
+housing_tenure <- read_csv("data/housing/housing_tenure_msoa.csv") |>
+  clean_names() |>
+  select(msoa_code = middle_layer_super_output_areas_code,
+         tenure_code = tenure_of_household_7_categories_code,
+         tenure_number = observation) |>
+  filter(tenure_code %in% c(2, 3, 4, 5)) |>
+  pivot_wider(names_from = tenure_code, values_from = tenure_number) |>
+  rename(socialrent1 = "2",
+         socialrent2 = "3",
+         privaterent1 = "4",
+         privaterent2 = "5") |>
+  mutate(social_total = socialrent1 + socialrent2) |>
+  mutate(privaterent_total = privaterent1 + privaterent2) |>
+  left_join(household_size) |>
+  mutate(socialrent_normalised = (social_total / total_household) * 100) |>
+  mutate(privaterent_normalised = (privaterent_total / total_household) * 100) |>
+  select(msoa_code, socialrent_normalised, privaterent_normalised)
+
+housing_occupancy <- read_csv("data/housing/housing_occupancy_rating_msoa.csv") |>
+  clean_names() |>
+  select(msoa_code = middle_layer_super_output_areas_code, 
+         occupancy_code = occupancy_rating_for_rooms_5_categories_code,
+         occupancy_number = observation) |>
+  filter(occupancy_code %in% c(1, 2, 4)) |>
+  pivot_wider(names_from = occupancy_code, values_from = occupancy_number) |>
+  rename(underoccupied2 = "1",
+         unoccupied1 = "2",
+         overcrowded = "4") |>
+  mutate(underoccupied_total = underoccupied2 + unoccupied1) |>
+  left_join(household_size) |>
+  mutate(underoccupied_normalised = (underoccupied_total / total_household)*100) |>
+  mutate(overcrowded_normalised = (overcrowded / total_household)*100) |>
+  select(msoa_code, underoccupied_normalised, overcrowded_normalised)
+
+mobile_home <- read_csv("data/housing/mobile_home_msoa.csv") |>
+  clean_names() |>
+  select(msoa_code = middle_layer_super_output_areas_code,
+         mobile_code = accommodation_by_type_of_dwelling_9_categories_code,
+         mobile_number= observation) |>
+  filter(mobile_code == 8) |>
+  pivot_wider(names_from = mobile_code, values_from = mobile_number) |>
+  rename(mobile1 = "8") |>
+  left_join(household_size) |>
+  mutate(mobile_normalised = (mobile1 / total_household)*100) |>
+  select(msoa_code, mobile_normalised)
+
+# ---- Migration & Ethnicity ----
+migrant <- read_csv("data/migration_ethnicity/migration_msoa.csv") |>
+  clean_names() |>
+  select(msoa_code = middle_layer_super_output_areas_code,
+         migrant_code = migrant_indicator_5_categories_code,
+         migrant_number = observation) |>
+  filter(migrant_code %in% c(2, 3)) |>
+  pivot_wider(names_from = migrant_code, values_from = migrant_number) |>
+  rename(migrant_insideUK = "2",
+         migrant_outsideUK = "3") |>
+  left_join(population) |>
+  mutate(migrant_insideUK_normalised = (migrant_insideUK / population_msoa)*100) |>
+  mutate(migrant_outsideUK_normalised = (migrant_outsideUK / population_msoa)*100) |>
+  select(msoa_code, migrant_insideUK_normalised, migrant_outsideUK_normalised)
+
+ethnicity <- read_csv("data/migration_ethnicity/ethnicity_msoa.csv") |>
+  clean_names() |>
+  select(msoa_code = middle_layer_super_output_areas_code, 
+         ethnic_code = ethnic_group_6_categories_code,
+         ethnic_number = observation) |>
+  filter(ethnic_code %in% c(1, 2, 3, 5)) |>
+  pivot_wider(names_from = ethnic_code, values_from = ethnic_number) |>
+  rename(asian = "1",
+         black = "2",
+         mixed = "3",
+         other = "5") |>
+  left_join(population) |>
+  mutate(asian_normalised = (asian / population_msoa)*100,
+         black_normalised = (black / population_msoa)*100,
+         mixed_normalised = (mixed / population_msoa)*100,
+         other_normalised = (other / population_msoa)*100) |>
+  select(msoa_code, 
+         asian_normalised, 
+         black_normalised, 
+         mixed_normalised,
+         other_normalised)
+
+# ---- Aggregate data: Social Vulnerability Index Dataset ----
+SoVi_msoa <- msoa |>
+  left_join(age) |>
+  left_join(edu_english) |>
+  left_join(edu_qualif) |>
+  left_join(health_disability) |>
+  left_join(health_longterm) |>
+  left_join(household_composition) |>
+  left_join(household_car) |>
+  left_join(housing_occupancy) |>
+  left_join(housing_tenure) |>
+  left_join(mobile_home) |>
+  left_join(migrant) |>
+  left_join(socio_classify) |>
+  left_join(socio_unpaid) |>
+  left_join(ethnicity)
+
+use_data(SoVi_msoa, overwrite = TRUE)
