@@ -1,4 +1,4 @@
-# ---- Creation of Social Vulnerability dataset for England & Wales ----
+# ---- DATA FOR SOCIAL VULNERABILITY INDEX (ENGLAND & WALES) ----
 
 # Data sourced from Github repository:
 # https://anonymous.4open.science/r/Msc-Dissertation-60BC/
