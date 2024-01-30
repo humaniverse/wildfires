@@ -10,8 +10,7 @@ query_urls <-
     "Disability", "MSOA", "England & Wales", "disability_england_wales", "https://static.ons.gov.uk/datasets/0d567b7c-8877-4daf-855b-d35207550ca4/TS038-2021-3-filtered-2024-01-23T15:24:46Z.csv#get-data", "https://www.ons.gov.uk/datasets/TS038/editions/2021/versions/3/filter-outputs/0d567b7c-8877-4daf-855b-d35207550ca4#get-data",
     
     # Northern Ireland
-    "Boundaries", "Super Data Zone", "Northern Ireland", "boundaries_sdz", "https://www.nisra.gov.uk/sites/nisra.gov.uk/files/publications/geography-sdz2021-esri-shapefile.zip", "https://www.nisra.gov.uk/publications/geography-super-data-zone-boundaries-gis-format"
-    
+
     # Scotland
     
   )
