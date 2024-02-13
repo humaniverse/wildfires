@@ -10,7 +10,7 @@ library(janitor)
 msoa <- read_csv("inst/extdata/msoa/msoa_21.csv") |>
   select(
     msoa_code = MSOA21CD,
-    msoa_name = MSOA21CD
+    msoa_name = MSOA21NM
   )
 
 # ---- Age ----
