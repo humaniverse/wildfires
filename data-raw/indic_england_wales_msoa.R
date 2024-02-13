@@ -283,7 +283,7 @@ ethnicity <- read_csv("inst/extdata/migration_ethnicity/ethnicity_msoa.csv") |>
          other_normalised)
 
 # ---- Aggregate data: Social Vulnerability Index Dataset ----
-SoVi_msoa <- msoa |>
+indic_msoa_eng_wales <- msoa |>
   left_join(age) |>
   left_join(edu_english) |>
   left_join(edu_qualif) |>
@@ -299,4 +299,4 @@ SoVi_msoa <- msoa |>
   left_join(socio_unpaid) |>
   left_join(ethnicity)
 
-use_data(SoVi_msoa, overwrite = TRUE)
+use_data(indic_msoa_eng_wales, overwrite = TRUE)
