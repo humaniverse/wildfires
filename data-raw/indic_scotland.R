@@ -5,6 +5,7 @@ library(tidyverse)
 library(httr2)
 library(readxl)
 library(janitor)
+library(geographr)
 
 lookup_iz_dz <- geographr::lookup_dz11_iz11_ltla20 |> 
   select(-ltla20_name, -ltla20_code)

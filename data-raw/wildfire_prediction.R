@@ -6,6 +6,7 @@ library("raster")
 library("tidyverse")
 library("geographr")
 library("httr2")
+library("fs")
 
 # MSOA (or equivalent) boundaries for all UK nations
 msoa <- geographr::boundaries_msoa21
@@ -68,9 +69,12 @@ topography_url <- "https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5
 download <- tempfile()
 
 request(topography_url) |>
+  req_progress() |> 
   req_perform(download)
 
 elevation_raw <- raster(unzip(download))
+unlink(download)
+
 elevation_uk <- crop(elevation_raw, countries_uk_wgs84)
 elevation_uk_mask <- mask(elevation_uk, countries_uk_wgs84)
 
@@ -81,10 +85,10 @@ elevation_uk[is.na(elevation_uk)] <- filled_elevation[is.na(elevation_uk)]
 
 # Calculate slope & aspect using the terrain function
 slope_raster <- terrain(elevation_uk, opt = "slope")
-slope_raster_mask <- mask(slope_raster,countries_uk_wgs84)
+slope_raster_mask <- mask(slope_raster, countries_uk_wgs84)
 
 aspect_raster <- terrain(elevation_uk, opt = "aspect")
-aspect_raster_mask <- mask(aspect_raster,countries_uk_wgs84)
+aspect_raster_mask <- mask(aspect_raster, countries_uk_wgs84)
 
 # Visualisation
 tm_shape(elevation_uk_mask) +
@@ -107,7 +111,7 @@ tm_shape(slope_raster_mask) +
 
 tm_shape(aspect_raster_mask) +
   tm_raster(style = "cont", 
-            title = "Slope", 
+            title = "Aspect", 
             palette = "-Spectral", 
             midpoint = NA)+
   tm_layout(frame = FALSE, 
@@ -115,4 +119,65 @@ tm_shape(aspect_raster_mask) +
             title.position = c("left", "bottom"))
 
 # ---- Climate variables ----
+# Source: https://www.worldclim.org/data/monthlywth.html
+
+# Minimum temperatures
+tmin_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2000-2009.zip"
+tmin_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2010-2019.zip"
+tmin_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2020-2021.zip"
+
+download <- tempfile()
+
+request(tmin_url_1) |>
+  req_progress() |> 
+  req_perform(download)
+
+unzip(download, list = TRUE)
+
+# unlink(download)
+
+avg_seasonal_temperature <- function(zip, season) {
+  files <- unzip(zip)
+  
+  # Define the pattern based on the specified season
+  if (season == "spring") {
+    pattern <- "wc2.1_2.5m_tmin_\\d{4}-(03|04|05)\\.tif"
+  } else if (season == "summer") {
+    pattern <- "wc2.1_2.5m_tmin_\\d{4}-(06|07|08)\\.tif"
+  } else {
+    stop("Invalid season. Supported values: 'spring' or 'summer'")
+  }
+
+  filtered_files <- files[grepl(pattern, files)]
+  
+  rasters <- lapply(filtered_files, raster)
+  stacked_raster <- stack(rasters)
+  
+  avg_temperature <- mean(stacked_raster, na.rm = TRUE)
+  
+  return(avg_temperature)
+}
+
+
+
+# Maximum temperatures
+tmax_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2000-2009.zip"
+tmax_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2010-2019.zip"
+tmax_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2020-2021.zip"
+
+
+
+# Precipitations
+prec_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2000-2009.zip"
+prec_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2010-2019.zip"
+prec_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2020-2021.zip"
+
+
+
+# Wind speed
+
+
+
+
+
 
