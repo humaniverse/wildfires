@@ -122,21 +122,35 @@ tm_shape(aspect_raster_mask) +
 # Source: https://www.worldclim.org/data/monthlywth.html
 
 # Minimum temperatures
-tmin_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2000-2009.zip"
-tmin_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2010-2019.zip"
-tmin_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2020-2021.zip"
+# List of URLs
+tmin_urls <- c(
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2000-2009.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2010-2019.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2020-2021.zip"
+)
 
-download <- tempfile()
+# Function to download and extract files from multiple urls
+download_and_extract <- function(urls, temp_dir) {
+  temp_file <- tempfile(fileext = ".zip")
+  
+  for (url in urls) {
+    request(url) |>
+      req_progress() |>
+      req_perform(temp_file)
+    
+    # Extract the contents
+    unzip(temp_file, exdir = temp_dir)
+  }
+}
 
-request(tmin_url_1) |>
-  req_progress() |> 
-  req_perform(download)
+# Download and extract files
+temp_dir <- tempdir()
+download_and_extract(tmin_urls, temp_dir)
+files <- list.files(temp_dir, full.names = TRUE)
 
-unzip(download, list = TRUE)
-
-# unlink(download)
-
-avg_seasonal_temperature <- function(zip, season) {
+# Function to calculate average minimum temperature for a specified season
+# across the raster
+calculate_avg_seasonal_temperature <- function(zip, season) {
   files <- unzip(zip)
   
   # Define the pattern based on the specified season
@@ -158,6 +172,11 @@ avg_seasonal_temperature <- function(zip, season) {
   return(avg_temperature)
 }
 
+spring_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "spring")
+summer_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "summer")
+
+save(spring_avg_min, file="spring_avg_min.rda")
+save(summer_avg_min, file="summer_avg_min.rda")
 
 
 # Maximum temperatures
