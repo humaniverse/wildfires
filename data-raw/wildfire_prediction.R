@@ -146,12 +146,11 @@ download_and_extract <- function(urls, temp_dir) {
 # Download and extract files
 temp_dir <- tempdir()
 download_and_extract(tmin_urls, temp_dir)
-files <- list.files(temp_dir, full.names = TRUE)
 
 # Function to calculate average minimum temperature for a specified season
 # across the raster
-calculate_avg_seasonal_temperature <- function(zip, season) {
-  files <- unzip(zip)
+calculate_avg_seasonal_temperature <- function(temp_dir, season) {
+  files <- list.files(temp_dir, full.names = TRUE)
   
   # Define the pattern based on the specified season
   if (season == "spring") {
