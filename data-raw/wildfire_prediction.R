@@ -4,20 +4,53 @@
 library("sf")
 library("tmap")
 library("tidyverse")
+library("geographr")
 
-# ---- Data cleaning ----
-fire_modis_all <- read_sf("inst/extdata/DL_FIRE_M-C61_427984/fire_archive_M-C61_427984.shp")
-fire_modis_all$year <- year(fire_modis_all$ACQ_DATE)
+# MSOA (or equivalent) boundaries for all UK nations
+msoa <- geographr::boundaries_msoa21
 
-fire_modis_all <- fire_modis_all |> 
-  filter(between(year, 2002, 2022)) |> 
-  mutate(month = month(ymd(ACQ_DATE)))
+iz <- geographr::boundaries_iz11 |> 
+  rename(msoa21_name = iz11_name,
+         msoa21_code = iz11_code)
 
-fire_modis_all_yearly <- fire_modis_all |> 
-  group_by(year) |> 
-  summarise(num_wildfires = n())
+sdz <- geographr::boundaries_sdz21|> 
+  rename(msoa21_name = sdz21_name,
+         msoa21_code = sdz21_code)
 
-fire_modis_engwales <- st_intersection(fire_modis_all, england_wales_wgs84)
+msoa_uk <- rbind(msoa, iz, sdz) |> 
+  st_make_valid() |> 
+  mutate(area_km2 = as.numeric(st_area(geometry) / 1e6))
+
+# ---- Fire point data ----
+fire_all <- 
+  read_sf("inst/extdata/DL_FIRE_M-C61_427984/fire_archive_M-C61_427984.shp") |> 
+  select(LATITUDE, LONGITUDE, ACQ_DATE, geometry) |> 
+  mutate(year = year(ACQ_DATE),
+         month = month(ymd(ACQ_DATE))) |> 
+  select(- ACQ_DATE) |> 
+  filter(between(year, 2002, 2022))
+
+fires_spring_uk <- fire_all |> 
+  filter(month %in% c(3:5))
+
+fires_summer_uk <- fire_all |> 
+  filter(month %in% c(6:9))
+
+# Attribute fires to MSOA
+fires_spring_uk_2 <- st_transform(fires_spring_uk, crs = st_crs(msoa_uk))
+fires_spring_msoa <- st_join(msoa_uk, fires_spring_uk_2)
+
+fires_summary <- fires_spring_msoa |> 
+  group_by(msoa21_code) |> 
+  summarize(total_fires = n())
+
+
+
+
+
+
+
+
 
 # ---- Visualisations ----
 tm_shape(fire_modis_all) +

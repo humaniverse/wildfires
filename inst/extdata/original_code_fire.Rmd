@@ -5,11 +5,10 @@ date: "2024-02-20"
 output: html_document
 ---
 
+# BIOPHYSICAL VULNERABILITY TO WILDFIRES IN ENGLAND AND WALES
 
-2. BIOPHYSICAL VULNERABILITY TO WILDFIRES IN ENGLAND AND WALES
 
-
-2.1. Importing Fire in the UK 
+## Importing Fire in the UK 
 
 
 ```{r}
@@ -314,9 +313,9 @@ tm_shape(fires_summary) +
 
 ```
 
-INDEPENDENT VARIABLES
+## INDEPENDENT VARIABLES
 
-1. TOPOGRAPHY
+#### TOPOGRAPHY
 
 ```{r}
 
@@ -443,9 +442,9 @@ aspect_map <- tm_shape(aspect_mask) +
 ```
 
 
-2. CLIMATOLOGICAL VARIABLES
+### CLIMATOLOGICAL VARIABLES
 
-2.1. Maximum Temperature
+#### Maximum Temperature
 
 ```{r}
 
@@ -549,7 +548,7 @@ tm_shape(avg_tmax_spring_engwales1) +
 ```
 
 
-2.2. Minumum Temperature
+#### Minumum Temperature
 
 ```{r}
 
@@ -734,7 +733,7 @@ avg_temp_summer_map <- tm_shape(avg_tmin_summer_engwales_map) +
 
 
 
-2.3. Precipitation
+#### Precipitation
 
 ```{r}
 
@@ -857,7 +856,7 @@ tm_shape(avg_prec_spring_engwales) +
 
 ```
 
-2.4. Wind Speed
+#### Wind Speed
 
 ```{r}
 
@@ -967,9 +966,7 @@ wind_summer <- tm_shape(avg_wind_summer_engwales1) +
 ```
 
 
-VEGETATION COVER
-
-NDVI
+### VEGETATION COVER: NDVI
 
 
 ```{r}
@@ -1103,10 +1100,9 @@ ndvi_summer <- tm_shape(ndvi_summer1) +
 
 ```
 
+### ANTROPOEGENIC
 
-4. ANTROPOEGENIC
-
-4.1. Road
+#### Road
 
 ```{r}
 
@@ -1163,7 +1159,7 @@ road_map <- tm_shape(road_uk1) +
 
 
 
-4.2. Population Counts
+#### Population Counts
 
 ```{r}
 
@@ -1226,11 +1222,11 @@ pop_map <- tm_shape(pop_count1) +
 
 
 
-SPRING WILDFIRE PREDICTION
+## SPRING WILDFIRE PREDICTION
 
 
 
-Raster Stack
+#### Raster Stack
 
 
 
@@ -1260,7 +1256,7 @@ for (i in 1:nlayers(spring_stack)) {
 
 ```
 
-Pseudo-background points as absence
+#### Pseudo-background points as absence
 
     
 
@@ -1596,7 +1592,7 @@ tm_shape(suitability_wildfires) + tm_raster(style = "cat", title = "Threshold", 
     tm_layout(frame = FALSE, legend.outside = TRUE)
 ```
 
-Aggregation of Wildfire Probability obtained from Random Forest
+#### Aggregation of Wildfire Probability obtained from Random Forest
 
 ```{r}
 
@@ -1648,7 +1644,7 @@ Aggregation_wildire <- tm_shape(msoa_with_probabilities) +
 ```
 
 
-LINEAR REGRESSION
+## LINEAR REGRESSION
 
 ```{r}
 
