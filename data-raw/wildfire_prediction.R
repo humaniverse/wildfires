@@ -172,10 +172,14 @@ calculate_avg_seasonal_temperature <- function(temp_dir, season) {
 }
 
 spring_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "spring")
-summer_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "summer")
+spring_avg_min_uk <- crop(spring_avg_min, countries_uk_wgs84)
 
-save(spring_avg_min, file="spring_avg_min.rda")
-save(summer_avg_min, file="summer_avg_min.rda")
+summer_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "summer")
+summer_avg_min_uk <- crop(summer_avg_min, countries_uk_wgs84)
+
+# Save new RasterLayer objects
+save(spring_avg_min_uk, file="inst/extdata/rf_independent/spring_avg_min_uk.rda")
+save(summer_avg_min_uk, file="inst/extdata/rf_independent/summer_avg_min_uk.rda")
 
 
 # Maximum temperatures
