@@ -1,0 +1,1017 @@
+---
+title: "original_code_SoVI"
+author: "Matteo Larrode"
+date: "2024-02-20"
+output: html_document
+---
+
+1. SOCIAL VULNERABILITY TO WILDFIRES IN ENGLAND AND WALES
+
+```{r}
+
+england_regions <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Regions_December_2022_EN_BUC_-2059701640261009719/RGN_DEC_2022_EN_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("rgn22cd", "rgn22nm", "geometry")
+
+
+```
+
+
+```{r}
+
+wales <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Countries_December_2022_UK_BUC_-3821418063001813993/CTRY_DEC_2022_UK_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("ctry22cd", "ctry22nm","geometry") %>%
+  dplyr::filter(ctry22nm == "Wales")
+
+
+```
+
+```{r}
+
+england_wales <- read_sf(here::here("/Users/user/Desktop/Dissertation/Dissertation Code/Data/Geographic Boundaries/Countries_December_2022_UK_BUC_-3821418063001813993/CTRY_DEC_2022_UK_BUC.shp")) %>%
+  
+  clean_names() %>%
+  dplyr::select("ctry22cd", "ctry22nm","geometry") %>%
+  dplyr::filter(ctry22nm == "Wales" | ctry22nm == "England")
+
+
+england_wales_wgs84 <- st_transform(england_wales, crs = "+proj=longlat +datum=WGS84")
+
+```
+
+```{r}
+
+tm_shape(england_wales) +
+  tm_polygons()
+
+
+
+```
+
+
+
+IMPORTING GEOGRAPHICAL UNIT: MSOA
+
+```{r}
+
+msoa <- read_sf(here::here("Data/Geographic Boundaries/MSOA_Dec_2021_Boundaries_Generalised_Clipped_EW_BGC_2022_9019591912524200825/MSOA_2021_EW_BGC.shp")) %>%
+  clean_names() %>%
+  rename(msoa_code = msoa21cd,
+         msoa_name = msoa21nm) %>%
+  dplyr::select("msoa_code", "msoa_name", "geometry")
+
+
+```
+
+```{r}
+
+tm_shape(msoa) +
+  
+  tm_borders()
+
+```
+
+
+```{r}
+fire_rescue_boundary <- read_sf(here::here("Data/Geographic Boundaries/Fire_and_Rescue_Authorities_December_2022_EW_BUC_7578859351911601513/FRA_DEC_2022_EW_BUC.shp")) %>%
+  clean_names() 
+
+```
+
+
+CALCULATING SOCIAL VULNERABILITY INDEX
+
+IMPORTING VARIABLES FOR SOCIAL VULNERABILITY
+
+Component 1: Age
+
+```{r}
+
+age <- read_csv(here::here("Data/Social Vulnerability Data/Age/custom-filtered-2023-06-23T18_25_01Z.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "age_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        age_code= age_6_categories_code,
+        age_number=observation) %>%
+  
+  pivot_wider(names_from = age_code, values_from = age_number) %>%
+    rename(age_15below = "1",
+           age_2 = "2",
+           age_3 = "3",
+           age_4 = "4",
+           age_5 = "5",
+         age_65over = "6")%>% 
+  mutate(population_msoa = age_15below + age_2 + age_3 + age_4 + age_5 + age_65over) %>%
+  mutate(pop_age_15below_normalised = (age_15below / population_msoa) * 100) %>%
+  mutate(pop_age_65over_normalised = (age_65over / population_msoa) * 100) %>%
+  dplyr::select("msoa_code","pop_age_15below_normalised","pop_age_65over_normalised","population_msoa")
+
+population <- age %>%
+  dplyr::select("msoa_code","population_msoa")
+
+age <- age %>%
+  dplyr::select("msoa_code","pop_age_15below_normalised","pop_age_65over_normalised")
+
+
+```
+Component 2: Education
+
+2.1. Highest Level of Qualification
+
+```{r}
+
+edu_qualif <- read_csv(here::here("Data/Social Vulnerability Data/Education/education_qualification.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "highest_level_of_qualification_7_categories_code","highest_level_of_qualification_7_categories","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        qualif_code= highest_level_of_qualification_7_categories_code,
+        qualif_cat = highest_level_of_qualification_7_categories,
+        edu_qualif_number=observation) %>%
+  dplyr::filter(qualif_code == 0) %>%
+  
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(no_qualification_normalised = (edu_qualif_number / population_msoa) *100) %>%
+  dplyr::select("msoa_code", "no_qualification_normalised")
+  
+  
+
+```
+2.2. Proficiency in English
+
+
+```{r}
+
+edu_english <- read_csv(here::here("Data/Social Vulnerability Data/Education/education_english.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "proficiency_in_english_language_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        prof_code= proficiency_in_english_language_5_categories_code,
+        edu_english_number=observation)%>%
+  
+  dplyr::filter(prof_code == 3 | prof_code == 4) %>%
+  pivot_wider(names_from = prof_code, values_from = edu_english_number) %>%
+  rename(english_not_well = "3",
+         english_cannot = "4")%>%
+  mutate(total_english = english_not_well + english_cannot) %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code"))%>%
+  mutate(english_normalised = (total_english / population_msoa)*100) %>%
+  dplyr::select("msoa_code","english_normalised")
+
+```
+
+Component 3: Health
+
+3.1. The number of disable people
+
+```{r}
+
+health_disability <- read_csv(here::here("Data/Social Vulnerability Data/Health/health_disability.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_disabled_people_in_household_4_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        dis_code= number_of_disabled_people_in_household_4_categories_code,
+        dis_number=observation)%>%
+  
+  dplyr::filter(dis_code == 1 | dis_code == 2) %>%
+  pivot_wider(names_from = dis_code, values_from = dis_number) %>%
+  rename(disable_1 = "1",
+         disable_2 = "2")%>%
+  mutate(total_disabled = disable_1 + disable_2) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(disabled_normalised = (total_disabled / population_msoa)*100) %>%
+  dplyr::select("msoa_code","disabled_normalised")
+
+
+```
+3.2. The number of people in households with a long-term health condition but are not disabled
+
+
+```{r}
+
+health_longterm <- read_csv(here::here("Data/Social Vulnerability Data/Health/health_longterm.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_people_in_household_with_a_long_term_heath_condition_but_are_not_disabled_4_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        longterm_code= number_of_people_in_household_with_a_long_term_heath_condition_but_are_not_disabled_4_categories_code,
+        longterm_number=observation)%>%
+  
+  dplyr::filter(longterm_code == 1 | longterm_code == 2) %>%
+  pivot_wider(names_from = longterm_code, values_from = longterm_number) %>%
+  rename(longterm_1 = "1",
+         longterm_2 = "2")%>%
+  mutate(total_longtermhealth = longterm_1 + longterm_2) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(longtermhealth_normalised = (total_longtermhealth / population_msoa)*100) %>%
+  dplyr::select("msoa_code","longtermhealth_normalised")
+
+
+```
+Component 4: Socioeconomic Status
+
+4.1. National statistics socio-economic classification (ns-sec)
+
+```{r}
+
+socio_classify <- read_csv(here::here("Data/Social Vulnerability Data/Socioeconomic Status/socio_occupation.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "national_statistics_socio_economic_classification_ns_se_c_10_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        socio_code= national_statistics_socio_economic_classification_ns_se_c_10_categories_code,
+        classify_number=observation)%>%
+  
+  dplyr::filter(socio_code == 6 | socio_code == 7 | socio_code == 8) %>%
+  pivot_wider(names_from = socio_code, values_from = classify_number) %>%
+  rename(semi_routine = "6",
+         routine = "7",
+         unemployed_neverworked = "8") %>%
+  mutate(total_lowoccupation = semi_routine + routine) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(lowoccupation_normalised = (total_lowoccupation / population_msoa)*100) %>%
+  mutate(unemployed_neverworked_normalised = (unemployed_neverworked / population_msoa)*100) %>%
+  dplyr::select("msoa_code","unemployed_neverworked_normalised","lowoccupation_normalised")
+
+
+```
+4.2. Number of unpaid carers in household
+
+
+```{r}
+
+socio_unpaid <- read_csv(here::here("Data/Social Vulnerability Data/Socioeconomic Status/socio_unpaid.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "number_of_unpaid_carers_in_household_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        unpaid_code= number_of_unpaid_carers_in_household_6_categories_code,
+        unpaid_number=observation) %>%
+  
+  dplyr::filter(unpaid_code == 1 | unpaid_code == 2 | unpaid_code == 3 | unpaid_code == 4) %>%
+  pivot_wider(names_from = unpaid_code, values_from = unpaid_number) %>%
+  rename(unpaid1 = "1",
+         unpaid2 = "2",
+         unpaid3 = "3",
+         unpaid4 = "4")  %>%
+  mutate(total_unpaid = unpaid1 + unpaid2 + unpaid3 + unpaid4) %>%
+  left_join(., population, by= c("msoa_code" = "msoa_code"))%>%
+  mutate(unpaid_normalised = (total_unpaid / population_msoa)*100) %>%
+  dplyr::select("msoa_code","unpaid_normalised")
+
+
+```
+Component 5: Household Characteristics
+
+5.1. Household Size
+
+```{r}
+
+household_size <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_size.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "household_size_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        size_code= household_size_5_categories_code,
+        size_number=observation)%>%
+  
+  pivot_wider(names_from = size_code, values_from = size_number)%>%
+    rename(h0 = "0",
+         h1 = "1",
+         h2 = "2",
+         h3 = "3",
+         h4 = "4")
+
+household_size$total_household <- household_size$h0 + household_size$h1 + household_size$h2 + household_size$h3 + household_size$h4
+
+household_size<- household_size %>%
+  dplyr::select("msoa_code","total_household")
+  
+
+```
+
+5.2. Household Composition
+
+```{r}
+
+household_composition <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_composition.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "household_composition_15_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        comp_code= household_composition_15_categories_code,
+        comp_number=observation)%>%
+  
+  dplyr::filter(comp_code == 1 | comp_code == 3 | comp_code == 10) %>%
+  pivot_wider(names_from = comp_code, values_from = comp_number) %>%
+  rename(oneperson_66 = "1",
+         singlefamily_all66 = "3",
+         loneparent_dependent = "10") %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(oneperson_66_normalised = (oneperson_66 / total_household)*100) %>%
+  mutate(singlefamily_all66_normalised = (singlefamily_all66 / total_household)*100) %>%
+  mutate(loneparent_dependent_normalised = (loneparent_dependent / total_household)*100) %>%
+           dplyr::select("msoa_code","oneperson_66_normalised", "singlefamily_all66_normalised","loneparent_dependent_normalised")
+
+```
+
+5.3. Car or van availability
+
+```{r}
+
+household_car <- read_csv(here::here("Data/Social Vulnerability Data/Household/household_car.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "car_or_van_availability_3_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        car_code= car_or_van_availability_3_categories_code,
+        car_number=observation)%>%
+  
+  pivot_wider(names_from = car_code, values_from = car_number)%>%
+    rename(notapp = "-8",
+         nocar = "0",
+         car = "1") %>%
+  left_join(., household_size, by = c("msoa_code"= "msoa_code")) %>%
+  mutate(., nocar_normalised = (nocar / total_household)* 100) %>%
+  dplyr::select("msoa_code", "nocar_normalised")
+
+
+```
+
+Component 6 Housing
+
+6.1. Tenure of Household
+
+```{r}
+
+housing_tenure <- read_csv(here::here("Data/Social Vulnerability Data/Housing/housing_tenure.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "tenure_of_household_7_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        tenure_code= tenure_of_household_7_categories_code,
+        tenure_number=observation)%>%
+  
+  dplyr::filter(tenure_code == 2 | tenure_code == 3 | tenure_code == 4 | tenure_code == 5) %>%
+  pivot_wider(names_from = tenure_code, values_from = tenure_number) %>%
+  rename(socialrent1 = "2",
+         socialrent2 = "3",
+         privaterent1 = "4",
+         privaterent2 = "5") %>%
+  mutate(social_total = socialrent1 + socialrent2) %>%
+  mutate(privaterent_total = privaterent1 + privaterent2) %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(socialrent_normalised = (social_total / total_household) *100) %>%
+  mutate(privaterent_normalised = (privaterent_total / total_household) *100) %>%
+  dplyr::select("msoa_code", "socialrent_normalised", "privaterent_normalised")
+
+
+```
+
+6.2. Occupancy rating for rooms
+
+```{r}
+
+housing_occupancy <- read_csv(here::here("Data/Social Vulnerability Data/Housing/housing_occupancy_rating.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "occupancy_rating_for_rooms_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        occupancy_code= occupancy_rating_for_rooms_5_categories_code,
+        occupancy_number=observation)%>%
+  
+  dplyr::filter(occupancy_code == 1 | occupancy_code == 2 | occupancy_code == 4) %>%
+  pivot_wider(names_from = occupancy_code, values_from = occupancy_number) %>%
+  rename(underoccupied2 = "1",
+         unoccupied1 = "2",
+         overcrowded = "4") %>%
+  mutate(underoccupied_total = underoccupied2 + unoccupied1) %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(underoccupied_normalised = (underoccupied_total / total_household)*100) %>%
+  mutate(overcrowded_normalised = (overcrowded / total_household)*100) %>%
+  dplyr::select("msoa_code", "underoccupied_normalised", "overcrowded_normalised")
+
+
+```
+6.3. Mobile Home
+
+```{r}
+
+mobile_home <- read_csv(here::here("Data/Social Vulnerability Data/Housing/mobile_home.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "accommodation_by_type_of_dwelling_9_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        mobile_code= accommodation_by_type_of_dwelling_9_categories_code,
+        mobile_number=observation)%>%
+  
+  dplyr::filter(mobile_code == 8) %>%
+  pivot_wider(names_from = mobile_code, values_from = mobile_number) %>%
+  rename(mobile1 = "8") %>%
+  left_join(., household_size, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(mobile_normalised = (mobile1 / total_household)*100) %>%
+  dplyr::select("msoa_code", "mobile_normalised")
+
+
+```
+
+
+Component of 7: Migration and Ethnicity
+
+7.1. Migrant Indicator
+
+```{r}
+
+migrant <- read_csv(here::here("Data/Social Vulnerability Data/Migration and Ethnicity/migration.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "migrant_indicator_5_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        migrant_code= migrant_indicator_5_categories_code,
+        migrant_number=observation)%>%
+  
+  dplyr::filter(migrant_code == 2 |migrant_code == 3) %>%
+  pivot_wider(names_from = migrant_code, values_from = migrant_number) %>%
+  rename(migrant_insideUK = "2",
+         migrant_outsideUK = "3") %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(migrant_insideUK_normalised = (migrant_insideUK / population_msoa)*100) %>%
+  mutate(migrant_outsideUK_normalised = (migrant_outsideUK / population_msoa)*100) %>%
+  dplyr::select("msoa_code", "migrant_insideUK_normalised", "migrant_outsideUK_normalised")
+
+
+```
+7.2. Ethnicity
+
+```{r}
+
+ethnicity <- read_csv(here::here("Data/Social Vulnerability Data/Migration and Ethnicity/ethnicity.csv")) %>%
+  
+  clean_names() %>%
+  dplyr::select("middle_layer_super_output_areas_code", "ethnic_group_6_categories_code","observation") %>%
+  rename(msoa_code=middle_layer_super_output_areas_code,
+        ethnic_code= ethnic_group_6_categories_code,
+        ethnic_number=observation)%>%
+  
+  dplyr::filter(ethnic_code == 1 | ethnic_code == 2 | ethnic_code == 3 | ethnic_code == 5) %>%
+  pivot_wider(names_from = ethnic_code, values_from = ethnic_number) %>%
+  rename(asian = "1",
+         black = "2",
+         mixed = "3",
+         other = "5") %>%
+  left_join(., population, by = c("msoa_code" = "msoa_code")) %>%
+  mutate(asian_normalised = (asian / population_msoa)*100) %>%
+  mutate(black_normalised = (black / population_msoa)*100) %>%
+  mutate(mixed_normalised = (mixed / population_msoa)*100) %>%
+  mutate(other_normalised = (other / population_msoa)*100) %>%
+
+  dplyr::select("msoa_code", "asian_normalised", "black_normalised", "mixed_normalised","other_normalised")
+
+
+```
+
+Final Spatial Data for Social Vulnerability Index Building
+
+```{r}
+
+final_data_SoVI <- msoa %>%
+  
+  left_join(., age, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., edu_english, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., edu_qualif, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., health_disability, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., health_longterm, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., household_composition, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., household_car, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., housing_occupancy, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., housing_tenure, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., mobile_home, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., migrant, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., socio_classify, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., socio_unpaid, by = c("msoa_code" = "msoa_code")) %>%
+  left_join(., ethnicity, by = c("msoa_code" = "msoa_code"))
+
+
+
+```
+
+PRINCIPAL COMPONENT ANALYSIS
+
+
+```{r}
+# Select columns after the third column
+columns_to_scale <- names(final_data_SoVI)[4:ncol(final_data_SoVI)]
+
+# Scale the selected columns using z-score standardization
+scaled_df <- final_data_SoVI %>%
+  mutate_at(vars(columns_to_scale), scale) %>%
+  st_drop_geometry(.)
+
+# View the scaled dataframe
+print(scaled_df)
+```
+```{r}
+# Subset the dataframe to include columns 4 to 22
+
+library(ggcorrplot)
+
+
+subset_data <- scaled_df[, 3:26]
+corr_matrix <- cor(subset_data)
+ggcorrplot(corr_matrix)
+```
+
+
+```{r}
+
+library(psych)
+
+kmo_result <- KMO(subset_data)
+bartlett_result <- cortest.bartlett(subset_data)
+print(kmo_result)
+print(bartlett_result)
+
+
+```
+
+```{r}
+
+library(psych)
+library(factoextra)
+
+
+# Assuming your data is stored in the "data" object
+pca <- principal(subset_data, nfactors = ncol(subset_data))
+
+loadings <- pca$loadings
+communalities <- pca$communality
+
+eigenvalues <- pca$values
+num_factors <- sum(eigenvalues > 1)
+
+# Original PCA results
+print(pca)
+
+# Kaiser's criteria
+cat("Number of factors according to Kaiser's criteria:", num_factors)
+
+
+```
+
+
+
+
+
+```{r}
+
+# Assuming your PCA result is stored in the "pca" object
+
+# Extract eigenvalues
+eigenvalues <- pca$values
+
+# Calculate proportion of variance explained
+variance_proportion <- eigenvalues / sum(eigenvalues)
+
+# Print the proportion of variance explained by each component
+print(variance_proportion)
+
+```
+
+```{r}
+
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the results
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                              Factor1 = factor_loadings[, 1], 
+                              Factor2 = factor_loadings[, 2],
+                              Factor3 = factor_loadings[, 3],
+                              Factor4 = factor_loadings[, 4],
+                              Factor5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+```{r}
+
+# Extract communalities
+communalities <- pca$communality
+
+# Create a dataframe to store variable names and their communalities
+communality_df <- data.frame(Variable = colnames(subset_data), Communalities = communalities)
+
+# Order the dataframe by Communalities in descending order
+communality_df <- communality_df[order(communality_df$Communalities, decreasing = TRUE), ]
+
+# Print the communality dataframe
+print(communality_df)
+
+
+```
+
+
+
+
+```{r}
+
+# Install and load the required packages
+library(ggplot2)
+
+# Create a data frame for the scree plot
+scree_data <- data.frame(Component = 1:length(eigenvalues), Variance_Proportion = variance_proportion)
+
+# Create the scree plot
+scree_plot <- ggplot(data = scree_data, aes(x = Component, y = Variance_Proportion)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(x = "Component", y = "Variance Proportion") +
+  ggtitle("Scree Plot") +
+  theme_minimal()
+
+# Display the scree plot
+print(scree_plot)
+
+```
+
+
+
+
+```{r}
+
+
+# Create the scree plot
+scree_plot <- plot(1:length(eigenvalues), eigenvalues, type = "b", pch = 19, xlab = "Component Number", ylab = "Eigenvalue",
+                   main = "Scree Plot", frame.plot = TRUE, xlim = c(1, length(eigenvalues)), ylim = c(0, max(eigenvalues)))
+
+# Add a line at eigenvalue 1
+abline(h = 1, col = "red", lty = "dashed")
+
+# Add component labels
+text(1:length(eigenvalues), eigenvalues, labels = 1:length(eigenvalues), pos = 3, cex = 0.8)
+
+# Adjust x-axis labels
+axis(side = 1, at = c(5, 10, 15, 20, 24), labels = c(5, 10, 15, 20, 24))
+
+# Adjust y-axis labels
+axis(side = 2)
+
+
+```
+
+
+
+```{r}
+
+library(psych)
+
+# Set the number of variables and observations in your data
+num_variables <- 19
+num_observations <- 7264
+
+# Generate random data for demonstration purposes
+set.seed(123)  # Set a seed for reproducibility
+data <- matrix(rnorm(num_variables * num_observations), ncol = num_variables)
+
+# Perform parallel analysis using Monte Carlo simulation
+pa_result <- principal(subset_data, nfactors = num_variables, n.obs = num_observations, scores = FALSE, rotate = "none", residuals = FALSE)
+pa_eigenvalues <- pa_result$values
+
+# Generate random eigenvalues for Monte Carlo simulation
+set.seed(456)  # Set a different seed for simulation
+sim_eigenvalues <- replicate(1000, {
+  random_data <- matrix(rnorm(num_variables * num_observations), ncol = num_variables)
+  sim_result <- principal(random_data, nfactors = num_variables, n.obs = num_observations, scores = FALSE, rotate = "none", residuals = FALSE)
+  sim_result$values
+})
+
+# Calculate the 95th percentile of the simulated eigenvalues
+percentile_95 <- apply(sim_eigenvalues, 1, function(x) quantile(x, probs = 0.95))
+
+# Compare eigenvalues with the 95th percentile
+significant_eigenvalues <- pa_eigenvalues > percentile_95
+
+# Count the number of significant eigenvalues
+num_components <- sum(significant_eigenvalues)
+
+# Display the number of components
+cat("Number of components:", num_components, "\n")
+
+```
+
+
+
+```{r}
+
+# Perform PCA with 5 components and varimax rotation
+pca <- principal(subset_data, nfactors = 5, rotate = "varimax")
+
+# Extract factor loadings
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the results
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                              Factor1 = factor_loadings[, 1], 
+                              Factor2 = factor_loadings[, 2],
+                              Factor3 = factor_loadings[, 3],
+                              Factor4 = factor_loadings[, 4],
+                              Factor5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+
+```{r}
+
+
+# Get the factor scores
+scores <- as.data.frame(pca$scores)
+
+# Extract eigenvalues
+eigenvalues <- pca$values
+
+# Calculate proportion of variance explained
+variance_proportion <- eigenvalues / sum(eigenvalues)
+
+
+
+```
+
+
+
+```{r}
+
+
+# Print the proportion of variance explained by each component
+print(variance_proportion)
+
+
+```
+
+
+```{r}
+
+# Extract factor loadings for the five components
+factor_loadings <- pca$loadings
+
+# Calculate squared loadings
+squared_loadings <- factor_loadings^2
+
+# Create a dataframe to store the results
+contribution_table <- data.frame(Variable = colnames(subset_data), 
+                                 Component1 = squared_loadings[, 1], 
+                                 Component2 = squared_loadings[, 2],
+                                 Component3 = squared_loadings[, 3],
+                                 Component4 = squared_loadings[, 4],
+                                 Component5 = squared_loadings[, 5])
+
+# Order the dataframe by the contributions in descending order for the first component
+contribution_table <- contribution_table[order(contribution_table$Component1, decreasing = TRUE), ]
+
+# Print the contribution table
+print(contribution_table)
+
+
+
+
+
+
+```
+
+```{r}
+
+# Extract factor loadings for the five components
+factor_loadings <- pca$loadings
+
+# Create a dataframe to store the loadings
+loadings_table <- data.frame(Variable = colnames(subset_data), 
+                             Component1 = factor_loadings[, 1], 
+                             Component2 = factor_loadings[, 2],
+                             Component3 = factor_loadings[, 3],
+                             Component4 = factor_loadings[, 4],
+                             Component5 = factor_loadings[, 5])
+
+# Print the loadings table
+print(loadings_table)
+
+```
+
+
+
+
+
+
+```{r}
+
+scores$SoVI <- ((scores$RC1 * 0.4331856253) + (scores$RC2 * 0.2174490076) + (scores$RC3 * 0.0742024742) + (scores$RC4 * 0.0640479196) +  (scores$RC5 * 0.0438841052)) / (0.4331856253 + 0.2174490076 + 0.0742024742 + 0.0640479196 + 0.0438841052)
+
+
+
+```
+
+
+```{r}
+x <-0.4331856253 + 0.2174490076 + 0.0742024742 + 0.0640479196 + 0.0438841052
+x
+```
+
+```{r}
+
+scores$SoVI_z <- scale(scores$SoVI) 
+
+
+
+```
+
+```{r}
+
+# Concatenate the column from dataset2 to dataset1
+combined_dataset <- cbind(final_data_SoVI, scores$SoVI_z)
+
+
+
+```
+
+
+```{r}
+
+# Define your own breaks, midpoint, and corresponding labels
+breaks <- c(-Inf, -1, -0.5, 0.5, 1, Inf)
+labels <- c("Very Low (<-1 Std)", "Low (-1 to -0.5 Std)", "Moderate (-0.5 to 0.5 Std)", "High (0.5 to 1 Std)", "Very High (>1 Std)")
+
+# Define the colors for each category
+colors <- c("#73add0", "#abd8e9", "#ffffbf", "#fdae61", "#d7191c")
+
+SoVI_map <- tm_shape(combined_dataset) +
+  tm_fill("scores.SoVI_z",
+          title = "SoVI",
+          breaks = breaks,
+          labels = labels,
+          palette = colors,
+          midpoint = 0,  # Specify the midpoint value here
+          legend.hist = TRUE) +
+  tm_borders(col = "black", lwd = 0.04) +
+  tm_shape(fire_rescue_boundary) +
+  tm_borders(col = "black", lwd=0.6)+
+  tm_shape(wales) +
+  tm_borders(col = "black", lwd=1.2)+
+  tm_layout(frame = FALSE,
+            legend.position = c(0.01,0.39),  # Change the position of the legend
+            legend.title.size = 1.4,  # Increase the size of the legend title
+            legend.text.size = 0.9,
+            legend.hist.size = 0.8,
+            legend.hist.width= 0.31) +
+    
+  tm_compass(north=0, position=c(0.88,0.90),size=1.75, show.labels= 0)+
+
+  tm_scale_bar(position = c(0.25,0.021),text.size =0.295, size = 0.3) +
+  tm_credits("Data Source: Office for National Statistics licensed under the Open Government Licence v.1.0.", position=c(0.38,0.084), size=0.5)+
+  tm_credits("Contains National Statistics data © Crown copyright and database right [2022]",position=c(0.38,0.064), size=0.5)+
+  tm_credits("Contains Ordnance Survey data © Crown copyright and database right [2022]",position=c(0.38,0.044), size=0.5) 
+ tmap_save(SoVI_map, filename = "SoVImap.png",dpi = 300)
+
+
+```
+
+```{r}
+
+# Assuming you have your numeric column named "scores.SoVI_z" and breaks defined as you mentioned
+breaks <- c(-Inf, -1, -0.5, 0.5, 1, Inf)
+
+# Bin the numeric column using the defined breaks
+bins <- cut(combined_dataset_2.0$scores.SoVI_z, breaks = breaks, include.lowest = TRUE, labels = FALSE)
+
+# Calculate the table of occurrences for each interval
+table_occurrences <- table(bins)
+
+# Calculate the total number of data points
+total_data_points <- length(combined_dataset_2.0$scores.SoVI_z)
+
+# Calculate the percentage for each interval
+percentage_per_break <- table_occurrences / total_data_points * 100
+
+# Define the labels for each interval to make the output more descriptive
+break_labels <- c("<= -1", "-1 to -0.5", "-0.5 to 0.5", "0.5 to 1", "> 1")
+
+# Create a data frame to store the results
+result_df <- data.frame(Break = break_labels, Count = table_occurrences, Percentage = percentage_per_break)
+
+# Calculate the count and percentage for "Outliers"
+outliers_count <- sum(bins == 0)
+outliers_percentage <- outliers_count / total_data_points * 100
+
+# Add "Outliers" row to the data frame
+result_df <- rbind(result_df, c("Outliers", outliers_count, outliers_percentage))
+
+# Print the result
+print(result_df)
+
+
+```
+
+
+
+
+Spatial Autocorrelation of SoVI
+
+```{r}
+
+library(spdep)
+
+
+# We need to coerce the sf spatialdatafile object into a new sp object
+combined_dataset_2.0 <- as(combined_dataset, "Spatial")
+# Create spatial weights matrix for areas
+nb_knn <- knn2nb(knearneigh(coordinates(combined_dataset_2.0), k = 5))
+WeightsMatrix <- nb2mat(nb_knn, style = 'B')
+Residual_WeightMatrix <- mat2listw(WeightsMatrix, style = 'W')
+# Run the test on the regression model output object "modelMLR" using lm.morantest()
+moran.test(combined_dataset_2.0$scores.SoVI_z, Residual_WeightMatrix)
+
+
+```
+
+
+```{r}
+
+local_moran_sovi <- localmoran(combined_dataset_2.0$scores.SoVI_z, Residual_WeightMatrix)
+
+
+```
+
+
+```{r}
+
+combined_dataset_2.0$lag_sovi <- lag.listw(Residual_WeightMatrix, combined_dataset_2.0$scores.SoVI_z)
+
+```
+
+
+
+```{r}
+
+combined_stats <- st_as_sf(combined_dataset_2.0)
+
+
+```
+
+```{r}
+
+# set a significance value
+sig_level <- 0.1
+
+# classification with significance value
+combined_stats$quad_sig <- ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                          combined_stats$lag_sovi > 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'high-high', 
+                                   ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                          combined_stats$llag_sovi <= 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'low-low', 
+                                   ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                          combined_stats$lag_sovi <= 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'high-low', 
+                                   ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                          combined_stats$lag_sovi > 0 & 
+                                          local_moran_sovi[,5] <= sig_level, 
+                                          'low-high',
+                                   ifelse(local_moran_sovi[,5] > sig_level, 
+                                          'not-significant', 
+                                          'not-significant')))))
+
+# classification without significance value
+combined_stats$quad_non_sig <- ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                              combined_stats$lag_sovi > 0, 
+                                              'high-high', 
+                                       ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                              combined_stats$lag_sovi <= 0, 
+                                              'low-low', 
+                                       ifelse(combined_stats$scores.SoVI_z > 0 & 
+                                              combined_stats$lag_sovi <= 0, 
+                                              'high-low', 
+                                       ifelse(combined_stats$scores.SoVI_z <= 0 & 
+                                              combined_stats$lag_sovi > 0,
+                                              'low-high',NA))))
+
+```
+
+
+```{r}
+
+# map all of the results here
+tm_shape(combined_stats) +
+    tm_fill(col = 'quad_non_sig', palette = c("#de2d26", "#fee0d2", "#deebf7", "#3182bd"))
+
+```
+
+

@@ -3424,9 +3424,3 @@ common_map <- tm_shape(merged_data_common) +
 
 ```
 
-
-```{r}
-
-
-```
-
