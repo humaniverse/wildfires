@@ -271,9 +271,8 @@ summer_avg_prec_uk <- crop(summer_avg_prec, countries_uk_wgs84)
 save(spring_avg_prec_uk, file="inst/extdata/rf_independent/spring_avg_prec_uk.rda")
 save(summer_avg_prec_uk, file="inst/extdata/rf_independent/summer_avg_prec_uk.rda")
 
+# WIND SPEED
 
-
-# Wind speed
 
 
 
