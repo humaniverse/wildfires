@@ -226,10 +226,50 @@ summer_avg_max_uk <- crop(summer_avg_max, countries_uk_wgs84)
 save(spring_avg_max_uk, file="inst/extdata/rf_independent/spring_avg_max_uk.rda")
 save(summer_avg_max_uk, file="inst/extdata/rf_independent/summer_avg_max_uk.rda")
 
-# Precipitations
-prec_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2000-2009.zip"
-prec_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2010-2019.zip"
-prec_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2020-2021.zip"
+# PRECIPITATIONS
+prec_urls <- c(
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2000-2009.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2010-2019.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2020-2021.zip"
+)
+
+# Download and extract files
+temp_dir3 <- tempdir()
+download_and_extract(prec_urls, temp_dir3)
+
+# Function to calculate average precipitations for a specified season
+# across the raster
+calculate_avg_seasonal_precipitations <- function(temp_dir, season) {
+  files <- list.files(temp_dir, full.names = TRUE)
+  
+  # Define the pattern based on the specified season
+  if (season == "spring") {
+    pattern <- "wc2.1_2.5m_prec_\\d{4}-(03|04|05)\\.tif"
+  } else if (season == "summer") {
+    pattern <- "wc2.1_2.5m_prec_\\d{4}-(06|07|08)\\.tif"
+  } else {
+    stop("Invalid season. Supported values: 'spring' or 'summer'")
+  }
+  
+  filtered_files <- files[grepl(pattern, files)]
+  
+  rasters <- lapply(filtered_files, raster)
+  stacked_raster <- stack(rasters)
+  
+  avg_precipitations <- mean(stacked_raster, na.rm = TRUE)
+  
+  return(avg_precipitations)
+}
+
+spring_avg_prec <- calculate_avg_seasonal_precipitations(temp_dir3, "spring")
+spring_avg_prec_uk <- crop(spring_avg_prec, countries_uk_wgs84)
+
+summer_avg_prec <- calculate_avg_seasonal_precipitations(temp_dir3, "summer")
+summer_avg_prec_uk <- crop(summer_avg_prec, countries_uk_wgs84)
+
+# Save new RasterLayer objects
+save(spring_avg_prec_uk, file="inst/extdata/rf_independent/spring_avg_prec_uk.rda")
+save(summer_avg_prec_uk, file="inst/extdata/rf_independent/summer_avg_prec_uk.rda")
 
 
 
