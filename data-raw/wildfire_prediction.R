@@ -120,8 +120,7 @@ tm_shape(aspect_raster_mask) +
 
 # ---- Climate variables ----
 # Source: https://www.worldclim.org/data/monthlywth.html
-
-# Minimum temperatures
+# MINIMUM TEMPERATURES
 # List of URLs
 tmin_urls <- c(
   "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmin_2000-2009.zip",
@@ -149,7 +148,7 @@ download_and_extract(tmin_urls, temp_dir)
 
 # Function to calculate average minimum temperature for a specified season
 # across the raster
-calculate_avg_seasonal_temperature <- function(temp_dir, season) {
+calculate_avg_seasonal_temperature_min <- function(temp_dir, season) {
   files <- list.files(temp_dir, full.names = TRUE)
   
   # Define the pattern based on the specified season
@@ -171,23 +170,61 @@ calculate_avg_seasonal_temperature <- function(temp_dir, season) {
   return(avg_temperature)
 }
 
-spring_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "spring")
+spring_avg_min <- calculate_avg_seasonal_temperature_min(temp_dir, "spring")
 spring_avg_min_uk <- crop(spring_avg_min, countries_uk_wgs84)
 
-summer_avg_min <- calculate_avg_seasonal_temperature(temp_dir, "summer")
+summer_avg_min <- calculate_avg_seasonal_temperature_min(temp_dir, "summer")
 summer_avg_min_uk <- crop(summer_avg_min, countries_uk_wgs84)
 
 # Save new RasterLayer objects
 save(spring_avg_min_uk, file="inst/extdata/rf_independent/spring_avg_min_uk.rda")
 save(summer_avg_min_uk, file="inst/extdata/rf_independent/summer_avg_min_uk.rda")
 
+# MAXIMUM TEMPERATURES
+# List of URLs
+tmax_urls <- c(
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2000-2009.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2010-2019.zip",
+  "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2020-2021.zip"
+)
 
-# Maximum temperatures
-tmax_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2000-2009.zip"
-tmax_url_2 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2010-2019.zip"
-tmax_url_3 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_tmax_2020-2021.zip"
+# Download and extract files
+temp_dir2 <- tempdir()
+download_and_extract(tmax_urls, temp_dir2)
 
+# Function to calculate average maximum temperature for a specified season
+# across the raster
+calculate_avg_seasonal_temperature_max <- function(temp_dir, season) {
+  files <- list.files(temp_dir, full.names = TRUE)
+  
+  # Define the pattern based on the specified season
+  if (season == "spring") {
+    pattern <- "wc2.1_2.5m_tmax_\\d{4}-(03|04|05)\\.tif"
+  } else if (season == "summer") {
+    pattern <- "wc2.1_2.5m_tmax_\\d{4}-(06|07|08)\\.tif"
+  } else {
+    stop("Invalid season. Supported values: 'spring' or 'summer'")
+  }
+  
+  filtered_files <- files[grepl(pattern, files)]
+  
+  rasters <- lapply(filtered_files, raster)
+  stacked_raster <- stack(rasters)
+  
+  avg_temperature <- mean(stacked_raster, na.rm = TRUE)
+  
+  return(avg_temperature)
+}
 
+spring_avg_max <- calculate_avg_seasonal_temperature_max(temp_dir2, "spring")
+spring_avg_max_uk <- crop(spring_avg_max, countries_uk_wgs84)
+
+summer_avg_max <- calculate_avg_seasonal_temperature_max(temp_dir2, "summer")
+summer_avg_max_uk <- crop(summer_avg_max, countries_uk_wgs84)
+
+# Save new RasterLayer objects
+save(spring_avg_max_uk, file="inst/extdata/rf_independent/spring_avg_max_uk.rda")
+save(summer_avg_max_uk, file="inst/extdata/rf_independent/summer_avg_max_uk.rda")
 
 # Precipitations
 prec_url_1 <- "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2000-2009.zip"
