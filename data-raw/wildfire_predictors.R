@@ -327,24 +327,28 @@ saveRDS(summer_avg_wind_speed_uk, file="inst/extdata/rf_independent/summer_avg_w
 # Source: https://hub.worldpop.org/geodata/summary?id=17530
 dist_road_url <- "https://data.worldpop.org/GIS/Covariates/Global_2000_2020/GBR/OSM/DST/gbr_osm_dst_road_100m_2016.tif"
 
-download2 <- tempfile()
+download_dist_road <- tempfile()
 
 request(dist_road_url) |>
   req_progress() |> 
-  req_perform(download)
+  req_perform(download_dist_road)
 
-temp_dir5 <- tempdir()
-dist_road_uk <- raster(unzip(download2, exdir = temp_dir5))
+dist_road_uk <- raster(download_dist_road)
+
+# Save RasterLayer
+saveRDS(dist_road_uk, file="inst/extdata/rf_independent/dist_road_uk.rds")
 
 # POPULATION
 # Source: https://hub.worldpop.org/geodata/summary?id=50089
 pop_url <- "https://data.worldpop.org/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/GBR/gbr_ppp_2020_UNadj_constrained.tif"
 
-download3 <- tempfile()
+download_pop <- tempfile()
 
 request(pop_url) |>
   req_progress() |> 
-  req_perform(download)
+  req_perform(download_pop)
 
-temp_dir6 <- tempdir()
-pop_uk <- raster(unzip(download3, exdir = temp_dir6))
+pop_uk <- raster(download_pop)
+
+# Save RasterLayer
+saveRDS(pop_uk, file="inst/extdata/rf_independent/pop_uk.rds")
