@@ -291,9 +291,9 @@ calculate_avg_wind_speed <- function(temp_dir, season) {
   
   # Define the pattern based on the specified season
   if (season == "spring") {
-    pattern <- "wc2.1_2.5m_wind_\\d{4}-(03|04|05)\\.tif"
+    pattern <- "_(03|04|05)\\.tif$"
   } else if (season == "summer") {
-    pattern <- "wc2.1_2.5m_wind_\\d{4}-(06|07|08)\\.tif"
+    pattern <- "_(06|07|08)\\.tif$"
   } else {
     stop("Invalid season. Supported values: 'spring' or 'summer'")
   }
@@ -314,7 +314,9 @@ spring_avg_wind_speed_uk <- crop(spring_avg_wind_speed, countries_uk_wgs84)
 summer_avg_wind_speed <- calculate_avg_wind_speed(temp_dir4, "summer")
 summer_avg_wind_speed_uk <- crop(summer_avg_wind_speed, countries_uk_wgs84)
 
-
+# Save new RasterLayer objects
+saveRDS(spring_avg_wind_speed_uk, file="inst/extdata/rf_independent/spring_avg_wind_speed_uk.rds")
+saveRDS(summer_avg_wind_speed_uk, file="inst/extdata/rf_independent/summer_avg_wind_speed_uk.rds")
 
 # ---- Vegetation Cover ----
 # Source: 
