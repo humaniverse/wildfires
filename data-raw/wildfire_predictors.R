@@ -279,12 +279,70 @@ save(spring_avg_prec_uk, file="inst/extdata/rf_independent/spring_avg_prec_uk.rd
 save(summer_avg_prec_uk, file="inst/extdata/rf_independent/summer_avg_prec_uk.rda")
 
 # WIND SPEED
+# Source: https://www.worldclim.org/data/worldclim21.html#google_vignette
 wind_url <- c("https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_wind.zip")
 
 # Download and extract files
 temp_dir4 <- tempdir()
 download_and_extract(wind_url, temp_dir4)
 
+calculate_avg_wind_speed <- function(temp_dir, season) {
+  files <- list.files(temp_dir, full.names = TRUE)
+  
+  # Define the pattern based on the specified season
+  if (season == "spring") {
+    pattern <- "wc2.1_2.5m_wind_\\d{4}-(03|04|05)\\.tif"
+  } else if (season == "summer") {
+    pattern <- "wc2.1_2.5m_wind_\\d{4}-(06|07|08)\\.tif"
+  } else {
+    stop("Invalid season. Supported values: 'spring' or 'summer'")
+  }
+  
+  filtered_files <- files[grepl(pattern, files)]
+  
+  rasters <- lapply(filtered_files, raster)
+  stacked_raster <- stack(rasters)
+  
+  avg_wind_speed <- mean(stacked_raster, na.rm = TRUE)
+  
+  return(avg_wind_speed)
+}
+
+spring_avg_wind_speed <- calculate_avg_wind_speed(temp_dir4, "spring")
+spring_avg_wind_speed_uk <- crop(spring_avg_wind_speed, countries_uk_wgs84)
+
+summer_avg_wind_speed <- calculate_avg_wind_speed(temp_dir4, "summer")
+summer_avg_wind_speed_uk <- crop(summer_avg_wind_speed, countries_uk_wgs84)
 
 
 
+# ---- Vegetation Cover ----
+# Source: 
+
+
+# ---- Anthropogenic Factors ----
+# DISTANCE TO ROADS
+# Source: https://hub.worldpop.org/geodata/summary?id=17530
+dist_road_url <- "https://data.worldpop.org/GIS/Covariates/Global_2000_2020/GBR/OSM/DST/gbr_osm_dst_road_100m_2016.tif"
+
+download2 <- tempfile()
+
+request(dist_road_url) |>
+  req_progress() |> 
+  req_perform(download)
+
+temp_dir5 <- tempdir()
+dist_road_uk <- raster(unzip(download2, exdir = temp_dir5))
+
+# POPULATION
+# Source: https://hub.worldpop.org/geodata/summary?id=50089
+pop_url <- "https://data.worldpop.org/GIS/Population/Global_2000_2020_Constrained/2020/BSGM/GBR/gbr_ppp_2020_UNadj_constrained.tif"
+
+download3 <- tempfile()
+
+request(pop_url) |>
+  req_progress() |> 
+  req_perform(download)
+
+temp_dir6 <- tempdir()
+pop_uk <- raster(unzip(download3, exdir = temp_dir6))
