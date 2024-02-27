@@ -61,6 +61,9 @@ ggplot(fire_modis_all_yearly, aes(x = year, y = num_wildfires)) +
   scale_x_continuous(breaks = as.integer(fire_modis_all_yearly$year))+
   theme_minimal()
 
+saveRDS(fires_spring_uk, file="inst/extdata/rf_outcome/fires_spring_uk.rds")
+saveRDS(fires_summer_uk, file="inst/extdata/rf_outcome/fires_summer_uk.rds")
+
 # ---- INDEPENDENT VARIABLES ----
 # ---- Topography ----
 # Source: https://www.worldclim.org/data/worldclim21.html
@@ -72,7 +75,8 @@ request(topography_url) |>
   req_progress() |> 
   req_perform(download)
 
-elevation_raw <- raster(unzip(download))
+temp_dir0 <- tempdir()
+elevation_raw <- raster(unzip(download, exdir = temp_dir0))
 unlink(download)
 
 elevation_uk <- crop(elevation_raw, countries_uk_wgs84)
@@ -117,6 +121,9 @@ tm_shape(aspect_raster_mask) +
   tm_layout(frame = FALSE, 
             legend.position = c("right", "top"), 
             title.position = c("left", "bottom"))
+
+saveRDS(slope_raster, file="inst/extdata/rf_independent/slope_raster.rds")
+saveRDS(aspect_raster, file="inst/extdata/rf_independent/aspect_raster.rds")
 
 # ---- Climate variables ----
 # Source: https://www.worldclim.org/data/monthlywth.html
@@ -272,9 +279,11 @@ save(spring_avg_prec_uk, file="inst/extdata/rf_independent/spring_avg_prec_uk.rd
 save(summer_avg_prec_uk, file="inst/extdata/rf_independent/summer_avg_prec_uk.rda")
 
 # WIND SPEED
+wind_url <- c("https://biogeo.ucdavis.edu/data/worldclim/v2.1/base/wc2.1_2.5m_wind.zip")
 
-
-
+# Download and extract files
+temp_dir4 <- tempdir()
+download_and_extract(wind_url, temp_dir4)
 
 
 
