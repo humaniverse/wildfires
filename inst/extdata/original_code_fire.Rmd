@@ -1818,7 +1818,7 @@ GWR_Significant_Spring <- tm_shape(lsoa_result) +
 
 ```
 
-SUMMER WILDFIRE PREDICTION
+## SUMMER WILDFIRE PREDICTION
 
 ```{r}
 
