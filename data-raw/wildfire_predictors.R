@@ -334,9 +334,10 @@ request(dist_road_url) |>
   req_perform(download_dist_road)
 
 dist_road_uk <- raster(download_dist_road)
+dist_road_uk_projected <- projectRaster(dist_road_uk, spring_avg_prec_uk, method = "ngb")
 
 # Save RasterLayer
-saveRDS(dist_road_uk, file="inst/extdata/rf_independent/dist_road_uk.rds")
+saveRDS(dist_road_uk_projected, file="inst/extdata/rf_independent/dist_road_uk_projected.rds")
 
 # POPULATION
 # Source: https://hub.worldpop.org/geodata/summary?id=50089
@@ -349,6 +350,36 @@ request(pop_url) |>
   req_perform(download_pop)
 
 pop_uk <- raster(download_pop)
+pop_uk_projected <- projectRaster(pop_uk, spring_avg_prec_uk, method = "ngb")
+pop_uk_projected[is.na(pop_uk_projected)] <- 0
 
 # Save RasterLayer
-saveRDS(pop_uk, file="inst/extdata/rf_independent/pop_uk.rds")
+saveRDS(pop_uk_projected, file="inst/extdata/rf_independent/pop_uk_projected.rds")
+
+# ---- STACKING INDEPENDENT VARIABLES ----
+# Load all independent variables
+directory_path <- "inst/extdata/rf_independent/"
+file_list <- list.files(directory_path, pattern = "\\.rds$|\\.rda$", full.names = TRUE)
+
+for (file_path in file_list) {
+  file_name <- tools::file_path_sans_ext(basename(file_path))
+  
+  if (grepl("\\.rds$", file_path)) {
+    assign(file_name, readRDS(file_path))
+  }
+  
+  if (grepl("\\.rda$", file_path)) {
+    load(file_path)
+    assign(file_name, get(file_name))
+  }
+}
+
+
+
+
+
+
+
+spring_independent_var_stack <- stack(
+  
+)
