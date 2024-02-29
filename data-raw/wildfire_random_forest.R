@@ -92,12 +92,49 @@ training_data_spring$fire <- as.factor(training_data_spring$fire)
 testing_data_spring$fire <- as.factor(testing_data_spring$fire)
 
 # SUMMER
+select3 <- kfold(uk_fires_env_summer, 4)
+uk_fires_env_summer_test <- uk_fires_env_summer[select3==1,]
+uk_fires_env_summer_train <- uk_fires_env_summer[select3!=1,]
+
+# repeat the process for the background points
+select4 <- kfold(background_points_env_summer, 4)
+background_points_env_summer_test <- background_points_env_summer[select4==1,]
+background_points_env_summer_train <- background_points_env_summer[select4!=1,]
+
+training_data_summer <- rbind(uk_fires_env_summer_train, background_points_env_summer_train)
+testing_data_summer <- rbind(uk_fires_env_summer_test, background_points_env_summer_test)
+
+# Remove rows with null values
+training_data_summer <- training_data_summer[complete.cases(training_data_summer), ]
+testing_data_summer <- testing_data_summer[complete.cases(testing_data_summer), ]
+
+# Convert the target variable to a factor
+training_data_summer$fire <- as.factor(training_data_summer$fire)
+testing_data_summer$fire <- as.factor(testing_data_summer$fire)
 
 # ---- RUN RANDOM FOREST MODEL ----
-rf_model <- randomForest(fire ~ ., data = training_data_spring)
+# SPRING
+rf_model_spring <- randomForest(fire ~ ., data = training_data_spring)
 
-# ---- EVALUATE PERFORMANCE ----
+# Evaluate performances
+predictions_spring <- predict(rf_model_spring, newdata = testing_data_spring)
 
+confusion_matrix <- table(predictions_spring, testing_data_spring$fire)
 
+print(confusion_matrix)
+print(paste0("Accuracy: ",  sum(diag(confusion_matrix)) / sum(confusion_matrix)))
+print(paste0("Precision: ", confusion_matrix[2, 2] / sum(confusion_matrix[, 2])))
+print(paste0("Recall: ", confusion_matrix[2, 2] / sum(confusion_matrix[2, ])))
 
+# SUMMER
+rf_model_summer <- randomForest(fire ~ ., data = training_data_summer)
 
+# Evaluate performances
+predictions_summer <- predict(rf_model_summer, newdata = testing_data_summer)
+
+confusion_matrix <- table(predictions_summer, testing_data_summer$fire)
+
+print(confusion_matrix)
+print(paste0("Accuracy: ",  sum(diag(confusion_matrix)) / sum(confusion_matrix)))
+print(paste0("Precision: ", confusion_matrix[2, 2] / sum(confusion_matrix[, 2])))
+print(paste0("Recall: ", confusion_matrix[2, 2] / sum(confusion_matrix[2, ])))
