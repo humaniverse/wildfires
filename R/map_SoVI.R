@@ -13,7 +13,6 @@
 #' 
 #' @export
 #'
-#' @example map_SoVI(sovi_england_wales, England)
 #' 
 map_SoVi <- function(SoVI_df, nation){
   if(nation == "England"){
