@@ -61,8 +61,8 @@ ggplot(fire_modis_all_yearly, aes(x = year, y = num_wildfires)) +
   scale_x_continuous(breaks = as.integer(fire_modis_all_yearly$year))+
   theme_minimal()
 
-saveRDS(fires_spring_uk, file="inst/extdata/rf_outcome/fires_spring_uk.rds")
-saveRDS(fires_summer_uk, file="inst/extdata/rf_outcome/fires_summer_uk.rds")
+use_data(fires_spring_uk, overwrite = TRUE)
+use_data(fires_summer_uk, overwrite = TRUE)
 
 # ---- INDEPENDENT VARIABLES ----
 # ---- Topography ----
@@ -467,4 +467,3 @@ names(summer_independent_var_stack) <- c(
 # ---- SAVE FINAL RASTER OBJECTS OF RF PREDICTORS ----
 use_data(spring_independent_var_stack, overwrite = TRUE)
 use_data(summer_independent_var_stack, overwrite = TRUE)
-
