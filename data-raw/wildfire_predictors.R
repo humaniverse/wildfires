@@ -1,4 +1,4 @@
-# ---- WILDFIRE PREDICTION ----
+# ---- WILDFIRE PREDICTORS ----
 # ---- SETUP ----
 library("sf")
 library("tmap")
@@ -336,6 +336,19 @@ saveRDS(summer_avg_wind_speed_uk, file="inst/extdata/rf_independent/summer_avg_w
 # ---- Vegetation Cover ----
 # Source: 
 
+# STEP 1: download ndvi data as "spring_ndvi" & "summer_ndvi"
+
+# STEP 2: crop using 'countries_uk_wgs84' object (create from top of file)
+# spring_ndvi_uk <- crop(spring_ndvi, countries_uk_wgs84)
+# summer_ndvi_uk <- crop(summer_ndvi, countries_uk_wgs84)
+
+# STEP 3: reproject to correct CRS (you will need to load 'spring_avg_prec_uk' from inst/extdata/rf_independent)
+# spring_ndvi_uk_projected <- projectRaster(spring_ndvi_uk, spring_avg_prec_uk, method = "ngb")
+# summer_ndvi_uk_projected <- projectRaster(summer_ndvi_uk, spring_avg_prec_uk, method = "ngb")
+
+# STEP 4: save objects
+# saveRDS(spring_ndvi_uk_projected, file="inst/extdata/rf_independent/spring_ndvi_uk_projected.rds")
+# saveRDS(summer_ndvi_uk_projected, file="inst/extdata/rf_independent/summer_ndvi_uk_projected.rds")
 
 # ---- Anthropogenic Factors ----
 # DISTANCE TO ROADS
@@ -399,6 +412,8 @@ plot(spring_avg_prec_uk)
 plot(summer_avg_prec_uk)
 plot(spring_avg_wind_speed_uk)
 plot(summer_avg_wind_speed_uk)
+# plot(spring_ndvi_uk_projected)
+# plot(summer_ndvi_uk_projected)
 plot(dist_road_uk_projected)
 plot(pop_uk_projected)
 dev.off()
@@ -429,7 +444,7 @@ names(spring_independent_var_stack) <- c(
   "Average Temperature", 
   "Precipitation",
   "Wind Speed", 
-  # "NDVI",
+  # NDVI,
   "Proximity to Major Roads", 
   "Population Counts"
 )
@@ -459,7 +474,7 @@ names(summer_independent_var_stack) <- c(
   "Average Temperature", 
   "Precipitation",
   "Wind Speed", 
-  # "NDVI",
+  # NDVI,
   "Proximity to Major Roads", 
   "Population Counts"
 )
