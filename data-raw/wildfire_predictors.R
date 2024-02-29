@@ -233,6 +233,21 @@ summer_avg_max_uk <- crop(summer_avg_max, countries_uk_wgs84)
 save(spring_avg_max_uk, file="inst/extdata/rf_independent/spring_avg_max_uk.rda")
 save(summer_avg_max_uk, file="inst/extdata/rf_independent/summer_avg_max_uk.rda")
 
+# AVERAGE TEMPERATURES
+geometric_mean_temp_spring_uk <- overlay(
+  spring_avg_min_uk, 
+  spring_avg_max_uk, 
+  fun=function(x, y) sqrt(x * y))
+
+geometric_mean_temp_summer_uk <- overlay(
+  summer_avg_min_uk, 
+  summer_avg_max_uk, 
+  fun=function(x, y) sqrt(x * y))
+
+# Save new RasterLayer objects
+save(geometric_mean_temp_spring_uk, file="inst/extdata/rf_independent/geometric_mean_temp_spring_uk.rda")
+save(geometric_mean_temp_summer_uk, file="inst/extdata/rf_independent/geometric_mean_temp_summer_uk.rda")
+
 # PRECIPITATIONS
 prec_urls <- c(
   "https://geodata.ucdavis.edu/climate/worldclim/2_1/hist/cts4.06/2.5m/wc2.1_cruts4.06_2.5m_prec_2000-2009.zip",
@@ -374,12 +389,82 @@ for (file_path in file_list) {
   }
 }
 
+# Visualise all raster layers to check all is good
+par(mfrow = c(3, 4))
+plot(slope_raster)
+plot(aspect_raster)
+plot(geometric_mean_temp_spring_uk)
+plot(geometric_mean_temp_summer_uk)
+plot(spring_avg_prec_uk)
+plot(summer_avg_prec_uk)
+plot(spring_avg_wind_speed_uk)
+plot(summer_avg_wind_speed_uk)
+plot(dist_road_uk_projected)
+plot(pop_uk_projected)
+dev.off()
 
-
-
-
-
-
+# ---- Spring ----
+# NEED TO ADD NDVI SPRING WHEN COLLECTED
 spring_independent_var_stack <- stack(
-  
+  slope_raster,
+  aspect_raster,
+  geometric_mean_temp_spring_uk,
+  spring_avg_prec_uk,
+  spring_avg_wind_speed_uk,
+  # spring_ndvi_uk_projected
+  dist_road_uk_projected,
+  pop_uk_projected
 )
+
+# Check if all rasters have the same CRS
+if (length(unique(sapply(spring_independent_var_stack, crs))) == 1) {
+  cat("All rasters have the same CRS.")
+} else {
+  cat("Rasters have different CRS.")
+}
+
+names(spring_independent_var_stack) <- c(
+  "Slope", 
+  "Aspect",
+  "Average Temperature", 
+  "Precipitation",
+  "Wind Speed", 
+  # "NDVI",
+  "Proximity to Major Roads", 
+  "Population Counts"
+)
+
+# ---- Summer ----
+summer_independent_var_stack <- stack(
+  slope_raster,
+  aspect_raster,
+  geometric_mean_temp_summer_uk,
+  summer_avg_prec_uk,
+  summer_avg_wind_speed_uk,
+  # summer_ndvi_uk_projected
+  dist_road_uk_projected,
+  pop_uk_projected
+)
+
+# Check if all rasters have the same CRS
+if (length(unique(sapply(summer_independent_var_stack, crs))) == 1) {
+  cat("All rasters have the same CRS.")
+} else {
+  cat("Rasters have different CRS.")
+}
+
+names(summer_independent_var_stack) <- c(
+  "Slope", 
+  "Aspect",
+  "Average Temperature", 
+  "Precipitation",
+  "Wind Speed", 
+  # "NDVI",
+  "Proximity to Major Roads", 
+  "Population Counts"
+)
+
+# ---- SAVE FINAL RASTER OBJECTS OF RF PREDICTORS ----
+use_data(spring_independent_var_stack, overwrite = TRUE)
+use_data(summer_independent_var_stack, overwrite = TRUE)
+
