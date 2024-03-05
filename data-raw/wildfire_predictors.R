@@ -337,6 +337,8 @@ saveRDS(summer_avg_wind_speed_uk, file="inst/extdata/rf_independent/summer_avg_w
 # Source: 
 
 # STEP 1: download ndvi data as "spring_ndvi" & "summer_ndvi"
+# Those objects need to be rasters, so if the data is in .tif, you just need
+# to run raster(file.tif)
 
 # STEP 2: crop using 'countries_uk_wgs84' object (create from top of file)
 # spring_ndvi_uk <- crop(spring_ndvi, countries_uk_wgs84)

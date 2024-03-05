@@ -16,6 +16,22 @@ data("fires_summer_uk")
 countries_uk_wgs84 <- geographr::boundaries_countries20 |> 
   st_transform(crs = "+proj=longlat +datum=WGS84")
 
+msoa <- geographr::boundaries_msoa21
+
+iz <- geographr::boundaries_iz11 |> 
+  rename(msoa21_name = iz11_name,
+         msoa21_code = iz11_code)
+
+sdz <- geographr::boundaries_sdz21|> 
+  rename(msoa21_name = sdz21_name,
+         msoa21_code = sdz21_code)
+
+msoa_uk <- rbind(msoa, iz, sdz) |> 
+  st_make_valid()
+
+lookup_msoa_ltla <- geographr::lookup_msoa11_msoa21_ltla22 |> 
+  select(msoa21_code, ltla22_code)
+
 # ---- PRE-PROCESSING ----
 # ---- Standardisation ----
 zscore_spring_stack <- stack()
@@ -47,8 +63,8 @@ countries_uk_sp <- as(countries_uk_wgs84, Class = "Spatial")
 # spsample() generates twice number of fire occurrence points randomly within the border
 # QUESTION: WHAT DOES N DO? Original are 5475 (spring) and 3157 (summer)
 # I use the number of fires for my own data
-background_points_spring <- spsample(countries_uk_sp, n=9448, "random")
-background_points_summer <- spsample(countries_uk_sp, n=5221, "random")
+background_points_spring <- spsample(countries_uk_sp, n = 9448, "random")
+background_points_summer <- spsample(countries_uk_sp, n = 5221, "random")
 
 # ---- More raster processing ----
 # SPRING
@@ -58,13 +74,13 @@ background_points_env_spring <- raster::extract(zscore_spring_stack, background_
 
 # Convert large matrix objects to data frame objects and add outcome `fire` indicator
 uk_fires_env_spring <- data.frame(uk_fires_env_spring, fire = 1)
-background_points_env_spring <-data.frame(background_points_env_spring, fire = 0)
+background_points_env_spring <- data.frame(background_points_env_spring, fire = 0)
 
 # SUMMER
 uk_fires_env_summer <- raster::extract(zscore_summer_stack, fires_summer_uk)
 background_points_env_summer <- raster::extract(zscore_summer_stack, background_points_summer)
 
-uk_fires_env_summer <-data.frame(uk_fires_env_summer, fire = 1)
+uk_fires_env_summer <- data.frame(uk_fires_env_summer, fire = 1)
 background_points_env_summer <-data.frame(background_points_env_summer, fire = 0)
 
 # ---- SPLITTING THE DATA ----
@@ -119,12 +135,27 @@ rf_model_spring <- randomForest(fire ~ ., data = training_data_spring)
 # Evaluate performances
 predictions_spring <- predict(rf_model_spring, newdata = testing_data_spring)
 
-confusion_matrix <- table(predictions_spring, testing_data_spring$fire)
+confusion_matrix_spring <- table(predictions_spring, testing_data_spring$fire)
+accuracy_spring <- sum(diag(confusion_matrix_spring)) / sum(confusion_matrix_spring)
+precision_spring <- confusion_matrix_spring[2, 2] / sum(confusion_matrix_spring[, 2])
+recall_spring <- confusion_matrix_spring[2, 2] / sum(confusion_matrix_spring[2, ])
+f1_score_spring <- 2 * (precision_spring * recall_spring) / (precision_spring + recall_spring)
 
-print(confusion_matrix)
-print(paste0("Accuracy: ",  sum(diag(confusion_matrix)) / sum(confusion_matrix)))
-print(paste0("Precision: ", confusion_matrix[2, 2] / sum(confusion_matrix[, 2])))
-print(paste0("Recall: ", confusion_matrix[2, 2] / sum(confusion_matrix[2, ])))
+print(confusion_matrix_spring)
+print(paste0("Accuracy: ", accuracy_spring))
+print(paste0("Precision: ", precision_spring))
+print(paste0("Recall: ", precision_spring))
+print(paste0("F1 Score: ", f1_score_spring))
+
+# Feature Importance
+ft_importance_spring <- importance(rf_model_spring)
+ft_importance_perc_spring <- 100 * ft_importance_spring / sum(ft_importance_spring)
+ft_importance_df_spring <- 
+  data.frame(Feature = row.names(ft_importance_spring), 
+             Importance = as.numeric(ft_importance_perc_spring))
+
+ft_importance_df_spring <- 
+  ft_importance_df_spring[order(ft_importance_df_spring$Importance, decreasing = TRUE), ]
 
 # SUMMER
 rf_model_summer <- randomForest(fire ~ ., data = training_data_summer)
@@ -132,9 +163,55 @@ rf_model_summer <- randomForest(fire ~ ., data = training_data_summer)
 # Evaluate performances
 predictions_summer <- predict(rf_model_summer, newdata = testing_data_summer)
 
-confusion_matrix <- table(predictions_summer, testing_data_summer$fire)
+confusion_matrix_summer <- table(predictions_summer, testing_data_summer$fire)
+accuracy_summer <- sum(diag(confusion_matrix_summer)) / sum(confusion_matrix_summer)
+precision_summer <- confusion_matrix_summer[2, 2] / sum(confusion_matrix_summer[, 2])
+recall_summer <- confusion_matrix_summer[2, 2] / sum(confusion_matrix_summer[2, ])
+f1_score_summer <- 2 * (precision_summer * recall_summer) / (precision_summer + recall_summer)
 
-print(confusion_matrix)
-print(paste0("Accuracy: ",  sum(diag(confusion_matrix)) / sum(confusion_matrix)))
-print(paste0("Precision: ", confusion_matrix[2, 2] / sum(confusion_matrix[, 2])))
-print(paste0("Recall: ", confusion_matrix[2, 2] / sum(confusion_matrix[2, ])))
+print(confusion_matrix_summer)
+print(paste0("Accuracy: ", accuracy_summer))
+print(paste0("Precision: ", precision_summer))
+print(paste0("Recall: ", precision_summer))
+print(paste0("F1 Score: ", f1_score_summer))
+
+# Feature Importance
+ft_importance_summer <- importance(rf_model_summer)
+ft_importance_perc_summer <- 100 * ft_importance_summer / sum(ft_importance_summer)
+ft_importance_df_summer <- 
+  data.frame(Feature = row.names(ft_importance_summer), 
+             Importance = as.numeric(ft_importance_perc_summer))
+
+ft_importance_df_summer <- 
+  ft_importance_df_summer[order(ft_importance_df_summer$Importance, decreasing = TRUE), ]
+
+# ---- CREATE SUMMER WILDFIRE RISK INDEX ----
+# Assuming the independent variables used for training the model are in the same order as the raster stack bands
+raster_df <- as.data.frame(zscore_summer_stack)
+wildfire_probabilities <- predict(rf_model_summer, raster_df , type = "prob")
+
+predicted_raster <- zscore_summer_stack[[1]] # Copy the first layer from the original raster stack
+values(predicted_raster) <- wildfire_probabilities[, 2]
+
+predicted_raster_cropped <- crop(predicted_raster, countries_uk_wgs84)
+predicted_raster_masked <- mask(predicted_raster_cropped, countries_uk_wgs84)
+
+# Aggregate to MSOA level
+# Extract wildfire risk probabilities for each MSOA
+msoa_probabilities <- raster::extract(predicted_raster, msoa_uk, fun = mean, na.rm = TRUE, df = TRUE)
+msoa_with_probabilities <- cbind(msoa_uk, msoa_probabilities)
+
+wildfire_risk <- msoa_with_probabilities |> 
+  st_drop_geometry() |> 
+  select(-ID) |> 
+  rename(wildfire_risk = Slope)
+
+# Separate the different nations
+
+# Impute NA values: use mean value in the local authority
+msoa_with_probabilities_new <- msoa_with_probabilities |> 
+  left_join(lookup_msoa_ltla)
+  
+
+
+
