@@ -1,4 +1,4 @@
-# ---- CREATION OF SOCIAL VULNERABILITY INDEX WITH PCA (NI) ----
+# ---- CREATION OF SOCIAL VULNERABILITY INDEX WITH PCA (SCOTLAND) ----
 
 # Code from Github repository:
 # https://anonymous.4open.science/r/Msc-Dissertation-60BC/
@@ -9,14 +9,14 @@ library(tidyverse)
 library(psych)
 library(ggcorrplot)
 library(factoextra)
-library(sf)
 
-data(indic_sdz_ni)    
+data(indic_msoa_scotland)    
 
 # ---- Prepare and test data for PCA  ----
 # Scale using z-score
-scaled_df <- indic_sdz_ni |>
-  select(-sdz21_code) |>
+scaled_df <- indic_msoa_scotland |>
+  ungroup() |>
+  select(-iz11_code, -iz11_name) |>
   mutate_all(~ scale(.))
 
 # Visualise correlation 
@@ -25,8 +25,8 @@ corr_matrix <- cor(scaled_df)
 ggcorrplot(corr_matrix) # Quite a few indicators are correlated
 
 # KMO and Bartlett's test
-# KMO score is 0.78, which is >0.6 indicating variables overlap and there is partial correlation
-# Barlett's test p-value is less than 0, reject null hypothesis that there is no correlation 
+# KMO score is 0.89, which is >0.6 indicating variables overlap and there is partial correlation
+# Barlett's test p-value is 0, reject null hypothesis that there is no correlation 
 kmo_result <- KMO(scaled_df)
 bartlett_result <- cortest.bartlett(scaled_df)
 print(kmo_result)
@@ -53,7 +53,7 @@ screeplot <-
        frame.plot = TRUE,
        xlim = c(1, length(eigenvalues)),
        ylim = c(0, max(eigenvalues)))
-# Elbow is around 3-4  PCs, 5th PC is <1 so, retain 4 PCs 
+# Elbow is around 3-4  PCs, 4th PC is >1 so, retain 4 PCs 
 
 # View correlations between each variable and the PCs using loadings  
 # Use 4 PCs
@@ -77,15 +77,12 @@ scores$SoVI <- ((scores$RC1 * variance_proportion[1]) +
                   (scores$RC4 * variance_proportion[4]) / 
                   (variance_proportion[1] + variance_proportion[2] + variance_proportion[3] + variance_proportion[4]))
 
-sovi_ni <- tibble(
-  sdz21_code = indic_sdz_ni$sdz21_code,
+sovi_scotland <- tibble(
+  iz11_code = indic_msoa_scotland$iz11_code,
+  iz11_name = indic_msoa_scotland$iz11_name,
   SoVI = scores$SoVI,
   SoVI_standardised = scale(scores$SoVI)[,1]
-) |>
-  left_join(geographr::boundaries_sdz21) |>
-  st_drop_geometry() |>
-  select(-geometry) |>
-  relocate(sdz21_name, .after = sdz21_code)
+) 
 
 # ---- Save dataset ----
-usethis::use_data(sovi_ni, overwrite = TRUE)
+usethis::use_data(sovi_scotland, overwrite = TRUE)
