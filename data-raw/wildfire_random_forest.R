@@ -218,6 +218,9 @@ lookup_msoa_ltla <- geographr::lookup_msoa11_msoa21_ltla22 |>
 lookup_iz_ltla <- geographr::lookup_dz11_iz11_ltla20 |> 
   distinct(iz11_code, ltla20_code)
 
+lookup_sdz_lgd <- geographr::lookup_dz21_sdz21_dea14_lgd14 |> 
+  distinct(sdz21_code, lgd14_code)
+
 wildfire_risk_england <- wildfire_risk |>
   filter(grepl("^E", msoa21_code)) |>
   left_join(lookup_msoa_ltla) |>
@@ -263,10 +266,10 @@ wildfire_risk_scotland <- wildfire_risk |>
   
 wildfire_risk_ni <- wildfire_risk |>
   filter(grepl("^N", msoa21_code)) |> 
-  rename(iz11_code = msoa21_code,
-         iz11_name = msoa21_name) |> 
-  left_join(lookup_iz_ltla)|>
-  group_by(ltla20_code) |>
+  rename(sdz21_code = msoa21_code,
+         sdz21_name = msoa21_name) |> 
+  left_join(lookup_sdz_lgd)|>
+  group_by(lgd14_code) |>
   mutate(wildfire_risk = ifelse(
     is.na(wildfire_risk),
     mean(wildfire_risk, na.rm = TRUE),
@@ -274,9 +277,10 @@ wildfire_risk_ni <- wildfire_risk |>
   )) |>
   ungroup() |> 
   mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
-  select(-ltla20_code)
+  select(-lgd14_code)
 
 # Save datasets
 usethis::use_data(wildfire_risk_england, overwrite = TRUE)
 usethis::use_data(wildfire_risk_wales, overwrite = TRUE)
 usethis::use_data(wildfire_risk_scotland, overwrite = TRUE)
+usethis::use_data(wildfire_risk_ni, overwrite = TRUE)
