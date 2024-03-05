@@ -13,4 +13,5 @@ Depends:
 LazyData: true
 Imports: 
     dplyr,
+    ggplot2,
     raster
