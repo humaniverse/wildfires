@@ -4,7 +4,7 @@
 # https://anonymous.4open.science/r/Msc-Dissertation-60BC/
 
 # ---- Setup ----
-#devtools::load_all(".")
+# devtools::load_all(".")
 library(tidyverse)
 library(psych)
 
@@ -40,9 +40,17 @@ scores$SoVI <- ((scores$RC1 * 0.4331856253) + (scores$RC2 * 0.2174490076) + (sco
 sovi_england_wales <- tibble(
   msoa11_code = indic_msoa_eng_wales$msoa_code,
   msoa11_name = indic_msoa_eng_wales$msoa_name,
-  SoVI = scores$SoVI,
-  SoVI_standardised = scale(scores$SoVI)[,1]
+  SoVI = scores$SoVI
 )
 
-# ---- Save dataset ----
-usethis::use_data(sovi_england_wales, overwrite = TRUE)
+sovi_england <- sovi_england_wales |> 
+  filter(grepl("^E", msoa11_code)) |> 
+  mutate(SoVI_standardised = scale(SoVI)[,1])
+
+sovi_wales <- sovi_england_wales |> 
+  filter(grepl("^W", msoa11_code)) |> 
+  mutate(SoVI_standardised = scale(SoVI)[,1])
+
+# ---- Save datasets ----
+usethis::use_data(sovi_england, overwrite = TRUE)
+usethis::use_data(sovi_wales, overwrite = TRUE)

@@ -206,7 +206,9 @@ wildfire_risk <- msoa_with_probabilities |>
   select(-ID) |> 
   rename(wildfire_risk = Slope)
 
-# Separate the different nations
+# Separate the different nations & impute missing values using higher geography
+wildfire_risk_england <- wildfire_risk |> 
+  filter(grepl("^E", msoa21_code))
 
 # Impute NA values: use mean value in the local authority
 msoa_with_probabilities_new <- msoa_with_probabilities |> 
