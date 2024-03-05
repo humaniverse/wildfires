@@ -17,7 +17,7 @@
 #' @export
 #'
 #' 
-map_worst_decile <- function(df, nation = "All"){
+map_worst_decile_msoa <- function(df, nation = "All"){
   # Create MSOA boundaries for all UK
   msoa <- geographr::boundaries_msoa21
   iz <- geographr::boundaries_iz11 |>

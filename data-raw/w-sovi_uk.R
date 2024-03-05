@@ -16,6 +16,7 @@ w_sovi_england <- sovi_england |>
            "yes",
            NA)) |> 
   select(msoa21_code,
+         ltla21_code,
          SoVI_standardised,
          wildfire_risk_standardised,
          is_worst_deciles)
@@ -33,6 +34,7 @@ w_sovi_wales <- sovi_wales |>
            "yes",
            NA)) |> 
   select(msoa21_code,
+         ltla21_code,
          SoVI_standardised,
          wildfire_risk_standardised,
          is_worst_deciles)
@@ -50,6 +52,7 @@ w_sovi_scotland <- sovi_scotland |>
            "yes",
            NA)) |> 
   select(msoa21_code = iz11_code,
+         ltla21_code,
          SoVI_standardised,
          wildfire_risk_standardised,
          is_worst_deciles)
@@ -67,6 +70,7 @@ w_sovi_ni <- sovi_ni |>
            "yes",
            NA)) |> 
   select(msoa21_code = sdz21_code,
+         ltla21_code,
          SoVI_standardised,
          wildfire_risk_standardised,
          is_worst_deciles)
