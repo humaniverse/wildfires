@@ -38,17 +38,17 @@ scores <- as.data.frame(pca_varimax$scores)
 scores$SoVI <- ((scores$RC1 * 0.4331856253) + (scores$RC2 * 0.2174490076) + (scores$RC3 * 0.0742024742) + (scores$RC4 * 0.0640479196) + (scores$RC5 * 0.0438841052)) / (0.4331856253 + 0.2174490076 + 0.0742024742 + 0.0640479196 + 0.0438841052)
 
 sovi_england_wales <- tibble(
-  msoa11_code = indic_msoa_eng_wales$msoa_code,
-  msoa11_name = indic_msoa_eng_wales$msoa_name,
+  msoa21_code = indic_msoa_eng_wales$msoa_code,
+  msoa21_name = indic_msoa_eng_wales$msoa_name,
   SoVI = scores$SoVI
 )
 
 sovi_england <- sovi_england_wales |> 
-  filter(grepl("^E", msoa11_code)) |> 
+  filter(grepl("^E", msoa21_code)) |> 
   mutate(SoVI_standardised = scale(SoVI)[,1])
 
 sovi_wales <- sovi_england_wales |> 
-  filter(grepl("^W", msoa11_code)) |> 
+  filter(grepl("^W", msoa21_code)) |> 
   mutate(SoVI_standardised = scale(SoVI)[,1])
 
 # ---- Save datasets ----
