@@ -160,6 +160,9 @@ map_worst_decile_ltla <- function(df, nation = "All"){
       filter(grepl("^N", ltla21_code))
   }
   
+  # EDIT HERE 
+  # CAN PLOT CONTINUOUS PERCENTAGE OF YES
+  # NEED TO RANK BY NATION
   df_aggregated <- df |> 
     group_by(ltla21_code) |> 
     summarise(total_count = n(),
@@ -168,7 +171,6 @@ map_worst_decile_ltla <- function(df, nation = "All"){
     ungroup() |> 
     mutate(percentage_yes_rank = 374 - rank(percentage_yes),
            is_worst = ifelse(rank(percentage_yes_rank) < 41 ,"yes", NA))
-  
   
   df_plot <- ltla_boundaries |> 
     left_join(df_aggregated)
