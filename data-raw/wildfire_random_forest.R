@@ -234,7 +234,7 @@ wildfire_risk_england <- wildfire_risk |>
   # Isle of Scilly is it's own ltla, so still NA: give it mean risk of Penzance (E02003948)
   mutate(wildfire_risk = if_else(msoa21_code == "E02006781", 0.1846667, wildfire_risk),
          wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
-  select(-ltla22_code)
+  rename(ltla21_code = ltla22_code)
 
 wildfire_risk_wales <- wildfire_risk |>
   filter(grepl("^W", msoa21_code)) |>
@@ -247,7 +247,7 @@ wildfire_risk_wales <- wildfire_risk |>
   )) |>
   ungroup() |> 
   mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
-  select(-ltla22_code)
+  rename(ltla21_code = ltla22_code)
 
 wildfire_risk_scotland <- wildfire_risk |>
   filter(grepl("^S", msoa21_code)) |> 
@@ -262,7 +262,7 @@ wildfire_risk_scotland <- wildfire_risk |>
   )) |>
   ungroup() |> 
   mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
-  select(-ltla20_code)
+  rename(ltla21_code = ltla20_code)
   
 wildfire_risk_ni <- wildfire_risk |>
   filter(grepl("^N", msoa21_code)) |> 
@@ -277,7 +277,7 @@ wildfire_risk_ni <- wildfire_risk |>
   )) |>
   ungroup() |> 
   mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
-  select(-lgd14_code)
+  rename(ltla21_code = lgd14_code)
 
 # Save datasets
 usethis::use_data(wildfire_risk_england, overwrite = TRUE)
