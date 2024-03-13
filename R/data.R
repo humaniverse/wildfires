@@ -322,3 +322,93 @@
 #' 
 "sovi_wales"
 
+#' Wildfire Risk Prediction for England's MSOAs
+#'
+#' This dataset provides predicted wildfire risk levels for Middle Layer Super Output Areas (MSOAs) 
+#' in England, based on a Random Forest model incorporating various environmental and anthropogenic factors.
+#'
+#' @format A tibble with 6,856 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{msoa21_name}{\code{character} MSOA name.}
+#'   \item{msoa21_code}{\code{character} MSOA code.}
+#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
+#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' in England and Wales" by Hasan Guler.
+#'
+"wildfire_risk_england"
+
+#' Wildfire Risk Prediction for Northern Ireland's Super Data Zones
+#'
+#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland, 
+#' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
+#'
+#' @format A tibble with 850 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{sdz21_name}{\code{character} SDZ name.}
+#'   \item{sdz21_code}{\code{character} SDZ code.}
+#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
+#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' in England and Wales" by Hasan Guler.
+#'
+"wildfire_risk_ni"
+
+#' Wildfire Risk Prediction for Scotland's Intermediate Zones
+#'
+#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland, utilizing a Random Forest model 
+#' that integrates environmental and anthropogenic variables.
+#'
+#' @format A tibble with 1,279 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{iz11_name}{\code{character} IZ name.}
+#'   \item{iz11_code}{\code{character} IZ code.}
+#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
+#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' in England and Wales" by Hasan Guler.
+#'
+"wildfire_risk_scotland"
+
+#' Wildfire Risk Prediction for Wales' MSOAs
+#'
+#' This dataset assesses wildfire risk across Middle Layer Super Output Areas (MSOAs) in Wales,
+#' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
+#' 
+#' @format A tibble with 408 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{msoa21_name}{\code{character} MSOA name.}
+#'   \item{msoa21_code}{\code{character} MSOA code.}
+#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
+#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' in England and Wales" by Hasan Guler.
+#'
+"wildfire_risk_wales"
+
+
+
