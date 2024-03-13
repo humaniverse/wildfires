@@ -295,7 +295,6 @@
 #' 
 "sovi_scotland"
 
-
 #' Social Vulnerability Index (SoVI) for Wales' MSOAs
 #'
 #' This dataset indicates the Social Vulnerability Index (SoVI) for Middle Layer Super Output Areas (MSOAs) in Wales.
