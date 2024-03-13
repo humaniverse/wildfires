@@ -12,7 +12,7 @@ map_worst_decile_ltla(df, nation = "All")
 \item{nation}{(default is "All"). Nation to be mapped: one of "All", "England", "Wales", "Scotland", or "Northern Ireland"}
 }
 \value{
-An image (png) with the map
+An image (png) with the map (not yet)
 }
 \description{
 Given a binary 'worst-decile' type variable at the MSOA level or equivalent,

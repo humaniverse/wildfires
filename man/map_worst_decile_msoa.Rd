@@ -12,7 +12,7 @@ map_worst_decile_msoa(df, nation = "All")
 \item{nation}{(default is "All"). Nation to be mapped: one of "All", "England", "Wales", "Scotland", or "Northern Ireland"}
 }
 \value{
-An image (png) with the map
+An image (png) with the map (not yet)
 }
 \description{
 Maps a binary variable at the MSOA level or equivalent for the UK or a given
