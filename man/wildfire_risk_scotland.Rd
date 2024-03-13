@@ -24,7 +24,7 @@ that integrates environmental and anthropogenic variables.
 }
 \details{
 Wildfire risk predictions are generated using a Random Forest model, considering climatological,
-topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability
-in England and Wales" by Hasan Guler.
+topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 }
 \keyword{datasets}

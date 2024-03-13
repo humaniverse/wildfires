@@ -29,7 +29,7 @@ relative vulnerability of communities to social and environmental hazards, with 
 greater vulnerability.
 }
 \references{
-The methodology for constructing the SoVI is detailed in the study "Spatial Assessment of Wildfire Vulnerability
+The methodology for constructing the SoVI is detailed in "Spatial Assessment of Wildfire Vulnerability
 in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," by Hasan Guler.
 }
 \keyword{datasets}

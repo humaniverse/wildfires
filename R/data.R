@@ -1,7 +1,7 @@
 #' Spring Wildfires in the UK (2002-2022)
 #'
 #' A dataset containing point data of all wildfires that happened in the UK in
-#' the months of March, April and May between 2002 and 2022. 
+#' the months of March, April and May between 2002 and 2022.
 #' From the MODIS Collection 6.1 of the NASA FIRMS Archive
 #'
 #' @format A data frame of class "sf" with 9448 rows and 5 variables:
@@ -13,14 +13,14 @@
 #'   \item{month}{Month}
 #' }
 #' @source \url{https://firms.modaps.eosdis.nasa.gov/download/}
-#' 
+#'
 #' @author Matteo Larrode
 "fires_spring_uk"
 
 #' Summer Wildfires in the UK (2002-2022)
 #'
 #' A dataset containing point data of all wildfires that happened in the UK in
-#' the months of June, July, August, andSeptember between 2002 and 2022. 
+#' the months of June, July, August, andSeptember between 2002 and 2022.
 #' From the MODIS Collection 6.1 of the NASA FIRMS Archive
 #'
 #' @format A data frame of class "sf" with 5221 rows and 5 variables:
@@ -109,9 +109,9 @@
 
 #' Socioeconomic Indicators for England and Wales at MSOA Level
 #'
-#' This dataset provides a comprehensive collection of socioeconomic variables 
-#' for Middle Layer Super Output Areas (MSOAs) in England and Wales. Derived 
-#' primarily from Census data, these indicators have been used for constructing 
+#' This dataset provides a comprehensive collection of socioeconomic variables
+#' for Middle Layer Super Output Areas (MSOAs) in England and Wales. Derived
+#' primarily from Census data, these indicators have been used for constructing
 #' the Social Vulnerability Index (SoVI).
 #'
 #' @format A tibble with 7,264 rows and 26 variables:
@@ -126,22 +126,22 @@
 #' }
 #'
 #' @details
-#' The indicators within this dataset were selected based on a comprehensive literature review 
-#' that identified key factors contributing to social vulnerability, particularly in the context 
-#' of wildfire risk. The normalisation process facilitates comparison across different MSOAs 
-#' and enhances the dataset's utility in spatial analyses. 
+#' The indicators within this dataset were selected based on a comprehensive literature review
+#' that identified key factors contributing to social vulnerability, particularly in the context
+#' of wildfire risk. The normalisation process facilitates comparison across different MSOAs
+#' and enhances the dataset's utility in spatial analyses.
 #'
 #' @references
-#' The selection of variables is based on the methodology and literature review 
-#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and 
-#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" 
+#' The selection of variables is based on the methodology and literature review
+#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and
+#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility"
 #' by Hasan Guler.
 #'
 "indic_msoa_eng_wales"
 
 #' Socioeconomic Indicators for Northern Ireland's Super Data Zones
 #'
-#' This dataset encapsulates a range of socioeconomic indicators derived from the 2021 Census 
+#' This dataset encapsulates a range of socioeconomic indicators derived from the 2021 Census
 #' for Super Data Zones (SDZs) in Northern Ireland.
 #'
 #' @format A tibble with 850 rows and 16 variables:
@@ -166,15 +166,15 @@
 #' }
 #'
 #' @details
-#' The indicators within this dataset were selected based on a comprehensive literature review 
-#' that identified key factors contributing to social vulnerability, particularly in the context 
-#' of wildfire risk. The normalisation process facilitates comparison across different areas 
-#' and enhances the dataset's utility in spatial analyses. 
+#' The indicators within this dataset were selected based on a comprehensive literature review
+#' that identified key factors contributing to social vulnerability, particularly in the context
+#' of wildfire risk. The normalisation process facilitates comparison across different areas
+#' and enhances the dataset's utility in spatial analyses.
 #'
 #' @references
-#' The selection of variables is based on the methodology and literature review 
-#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and 
-#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" 
+#' The selection of variables is based on the methodology and literature review
+#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and
+#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility"
 #' by Hasan Guler.
 #'
 #' Northern Ireland Statistics and Research Agency (NISRA) - Census 2021 data.
@@ -183,8 +183,8 @@
 
 #' Socioeconomic Indicators for Scotland's Middle Layer Super Output Areas (MSOAs)
 #'
-#' This dataset contains socioeconomic indicators from the 2021 Census for MSOAs in Scotland, 
-#' essential for understanding demographic patterns, social vulnerability, and aiding in socio-economic 
+#' This dataset contains socioeconomic indicators from the 2021 Census for MSOAs in Scotland,
+#' essential for understanding demographic patterns, social vulnerability, and aiding in socio-economic
 #' analyses and policy formulation.
 #'
 #' @format A tibble with 1,279 rows and 20 variables. Key variables include:
@@ -199,15 +199,15 @@
 #' }
 #'
 #' @details
-#' The indicators within this dataset were selected based on a comprehensive literature review 
-#' that identified key factors contributing to social vulnerability, particularly in the context 
-#' of wildfire risk. The normalisation process facilitates comparison across different areas 
-#' and enhances the dataset's utility in spatial analyses. 
+#' The indicators within this dataset were selected based on a comprehensive literature review
+#' that identified key factors contributing to social vulnerability, particularly in the context
+#' of wildfire risk. The normalisation process facilitates comparison across different areas
+#' and enhances the dataset's utility in spatial analyses.
 #'
 #' @references
-#' The selection of variables is based on the methodology and literature review 
-#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and 
-#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" 
+#' The selection of variables is based on the methodology and literature review
+#' conducted in "Spatial Assessment of Wildfire Vulnerability in England and
+#' Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility"
 #' by Hasan Guler.
 #'
 #' Northern Ireland Statistics and Research Agency (NISRA) - Census 2021 data.
@@ -216,8 +216,8 @@
 
 #' Social Vulnerability Index (SoVI) for England's MSOAs
 #'
-#' This dataset quantifies the Social Vulnerability Index (SoVI) across Middle Layer Super Output Areas (MSOAs) 
-#' in England. The SoVI is a composite measure derived from various socio-economic 
+#' This dataset quantifies the Social Vulnerability Index (SoVI) across Middle Layer Super Output Areas (MSOAs)
+#' in England. The SoVI is a composite measure derived from various socio-economic
 #' and demographic variables, providing insights into relative vulnerability across the UK.
 #'
 #' @format A tibble with 6,856 rows and 4 columns:
@@ -230,21 +230,21 @@
 #' }
 #'
 #' @details
-#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic 
-#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the 
-#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating 
+#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic
+#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the
+#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating
 #' greater vulnerability.
 #'
 #' @references
-#' The methodology for constructing the SoVI is detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' The methodology for constructing the SoVI is detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," by Hasan Guler.
 #'
 "sovi_england"
 
 #' Social Vulnerability Index (SoVI) for Northern Ireland's Super Data Zones
 #'
-#' This dataset quantifies the Social Vulnerability Index (SoVI) across Super Data Zones (SDZs) 
-#' in Northern Ireland. The SoVI is a composite measure derived from various socio-economic 
+#' This dataset quantifies the Social Vulnerability Index (SoVI) across Super Data Zones (SDZs)
+#' in Northern Ireland. The SoVI is a composite measure derived from various socio-economic
 #' and demographic variables, providing insights into relative vulnerability across the UK.
 #'
 #' @format A tibble with 850 rows and 4 columns:
@@ -257,23 +257,23 @@
 #' }
 #'
 #' @details
-#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic 
-#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the 
-#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating 
+#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic
+#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the
+#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating
 #' greater vulnerability.
 #'
 #' @references
-#' The methodology for constructing the SoVI is detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' The methodology for constructing the SoVI is detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," by Hasan Guler.
-#' 
+#'
 "sovi_ni"
 
 #' Social Vulnerability Index (SoVI) for Scotland's Intermediate Zones
 #'
-#' This dataset presents the Social Vulnerability Index (SoVI) for Intermediate Zones (IZs) in Scotland; 
-#' The SoVI is a composite measure derived from various socio-economic and demographic variables, 
+#' This dataset presents the Social Vulnerability Index (SoVI) for Intermediate Zones (IZs) in Scotland;
+#' The SoVI is a composite measure derived from various socio-economic and demographic variables,
 #' providing insights into relative vulnerability across the UK.
-#' 
+#'
 #' @format A tibble with 1,279 rows and 4 columns:
 #'
 #' \describe{
@@ -284,21 +284,21 @@
 #' }
 #'
 #' @details
-#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic 
-#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the 
-#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating 
+#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic
+#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the
+#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating
 #' greater vulnerability.
 #'
 #' @references
-#' The methodology for constructing the SoVI is detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' The methodology for constructing the SoVI is detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," by Hasan Guler.
-#' 
+#'
 "sovi_scotland"
 
 #' Social Vulnerability Index (SoVI) for Wales' MSOAs
 #'
 #' This dataset indicates the Social Vulnerability Index (SoVI) for Middle Layer Super Output Areas (MSOAs) in Wales.
-#' The SoVI is a composite measure derived from various socio-economic and demographic variables, 
+#' The SoVI is a composite measure derived from various socio-economic and demographic variables,
 #' providing insights into relative vulnerability across the UK.
 #'
 #' @format A tibble with 408 rows and 4 columns:
@@ -311,20 +311,20 @@
 #' }
 #'
 #' @details
-#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic 
-#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the 
-#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating 
+#' The SoVI is constructed using Principal Component Analysis (PCA) on a set of socio-economic and demographic
+#' variables sourced from the Census, as detailed in the referenced study. This index provides insights into the
+#' relative vulnerability of communities to social and environmental hazards, with higher scores indicating
 #' greater vulnerability.
 #'
 #' @references
-#' The methodology for constructing the SoVI is detailed in the study "Spatial Assessment of Wildfire Vulnerability 
+#' The methodology for constructing the SoVI is detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," by Hasan Guler.
-#' 
+#'
 "sovi_wales"
 
 #' Wildfire Risk Prediction for England's MSOAs
 #'
-#' This dataset provides predicted wildfire risk levels for Middle Layer Super Output Areas (MSOAs) 
+#' This dataset provides predicted wildfire risk levels for Middle Layer Super Output Areas (MSOAs)
 #' in England, based on a Random Forest model incorporating various environmental and anthropogenic factors.
 #'
 #' @format A tibble with 6,856 rows and 5 columns:
@@ -338,15 +338,15 @@
 #' }
 #'
 #' @details
-#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
-#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
-#' in England and Wales" by Hasan Guler.
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
 "wildfire_risk_england"
 
 #' Wildfire Risk Prediction for Northern Ireland's Super Data Zones
 #'
-#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland, 
+#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland,
 #' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
 #'
 #' @format A tibble with 850 rows and 5 columns:
@@ -360,15 +360,15 @@
 #' }
 #'
 #' @details
-#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
-#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
-#' in England and Wales" by Hasan Guler.
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
 "wildfire_risk_ni"
 
 #' Wildfire Risk Prediction for Scotland's Intermediate Zones
 #'
-#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland, utilizing a Random Forest model 
+#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland, utilizing a Random Forest model
 #' that integrates environmental and anthropogenic variables.
 #'
 #' @format A tibble with 1,279 rows and 5 columns:
@@ -382,9 +382,9 @@
 #' }
 #'
 #' @details
-#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
-#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
-#' in England and Wales" by Hasan Guler.
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
 "wildfire_risk_scotland"
 
@@ -392,7 +392,7 @@
 #'
 #' This dataset assesses wildfire risk across Middle Layer Super Output Areas (MSOAs) in Wales,
 #' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
-#' 
+#'
 #' @format A tibble with 408 rows and 5 columns:
 #'
 #' \describe{
@@ -404,11 +404,31 @@
 #' }
 #'
 #' @details
-#' Wildfire risk predictions are generated using a Random Forest model, considering climatological, 
-#' topographical, and land use variables, as detailed in the study "Spatial Assessment of Wildfire Vulnerability 
-#' in England and Wales" by Hasan Guler.
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
 "wildfire_risk_wales"
 
-
-
+#' Combined Wildfire Risk and Social Vulnerability Index (SoVI) for UK MSOAs
+#'
+#' This dataset integrates the Social Vulnerability Index (SoVI) and wildfire risk predictions
+#' across Middle Layer Super Output Areas (MSOAs) in the UK. It includes a binary indicator identifying
+#' MSOAs within the worst deciles (8th, 9th, or 10th) for both SoVI and wildfire risk.
+#'
+#' @format A tibble with 9,393 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{msoa21_code}{\code{character} MSOA (or equivalent) code.}
+#'   \item{ltla21_code}{\code{character} Local Authority code.}
+#'   \item{SoVI_standardised}{\code{double} Standardised Social Vulnerability Index score.}
+#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#'   \item{is_worst_deciles}{\code{character} Indicator for MSOAs in the worst deciles (8th, 9th, or 10th) for both SoVI and wildfire risk. 'yes' indicates presence in the worst deciles, 'NA' denotes otherwise.}
+#' }
+#'
+#' @references
+#' The approach for combining SoVI and wildfire risk scores and the methodology for determining
+#' the worst deciles are based on principles outlined in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
+#'
+"w_sovi_uk"
