@@ -16,9 +16,9 @@ social vulnerability and wildfire risk for the UK’s nations:
 -   Scotland: Intermediate Zones
 -   Northern Ireland: Super Data Zones
 
-This package is a continuation of the thesis "Spatial Assessment of Wildfire Vulnerability in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler. 
+This package is based on Hasan Guler's thesis "Spatial Assessment of Wildfire Vulnerability in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility," aiming to spatially assess wildfire vulnerability in England and Wales by coupling social and biophysical vulnerability.
 
-ADD MORE ON PURPOSE OF STUDYING INTERSECTION OF SOCIAL VULNERABILITY AND WILDFIRE RISK
+The impact of wildfire widely vary based on the resilience of exposed communities, influenced by the time and location of the incident in conjunction with socioeconomic variables. It is therefore necessary to gain a deeper understanding of how socioeconomic disparities intersect with environmental hazards, to enable targeted interventions and informed decision-making in measures to decrease hazard exposure. 
 
 ## Installation
 
@@ -45,7 +45,7 @@ The package provides a comprehensive toolkit for analyzing social vulnerability 
 -   Nothern Ireland: `wilfires::sovi_ni`
 -   Scotland: `wildfires::sovi_scotland`
 
-**Indicators of Social vulnerability**, which have been used to create
+**Indicators of social vulnerability**, which have been used to create
 the SoVI are also available for all UK nations.
 
 -   England & Wales: `wilfires::indic_msoa_eng_wales`
@@ -64,9 +64,9 @@ the SoVI are also available for all UK nations.
 
 ### Creation of the Social Vulnerability Index via Principal Component Analysis
 
-
 ### Prediction of Summer Wildfire Risk via Random Forest
 
+[Add model performance measures]
 
 ## Getting help
 
