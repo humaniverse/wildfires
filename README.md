@@ -117,7 +117,7 @@ weighted sum of the component scores, with weights based on the variance
 explained by each component. The SoVI scores were then standardized
 within country.
 
-### Prediction of Summer Wildfire Risk via Random Forest
+### Prediction of Wildfire Risk via Random Forest
 
 **Data Collection**
 
