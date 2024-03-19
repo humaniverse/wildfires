@@ -40,24 +40,24 @@ The package provides a comprehensive toolkit for analyzing social vulnerability 
 
 ### Social Vulnerability Index (SoVI)
 
--   England: `wilfires::sovi_england`
--   Wales: `wilfires::sovi_wales`
--   Nothern Ireland: `wilfires::sovi_ni`
+-   England: `wildfires::sovi_england`
+-   Wales: `wildfires::sovi_wales`
+-   Nothern Ireland: `wildfires::sovi_ni`
 -   Scotland: `wildfires::sovi_scotland`
 
 **Indicators of social vulnerability**, which have been used to create
 the SoVI are also available for all UK nations.
 
--   England & Wales: `wilfires::indic_msoa_eng_wales`
--   Nothern Ireland: `wilfires::indic_sdz_ni`
+-   England & Wales: `wildfires::indic_msoa_eng_wales`
+-   Nothern Ireland: `wildfires::indic_sdz_ni`
 -   Scotland: `wildfires::indic_msoa_scotland`
 
 
 ### Wildfire Risk (Summer)
 
--   England: `wilfires::wildfire_risk_england`
--   Wales: `wilfires::wildfire_risk_wales`
--   Nothern Ireland: `wilfires::wildfire_risk_ni`
+-   England: `wildfires::wildfire_risk_england`
+-   Wales: `wildfires::wildfire_risk_wales`
+-   Nothern Ireland: `wildfires::wildfire_risk_ni`
 -   Scotland: `wildfires::wildfire_risk_scotland`
 
 ## Methodology
