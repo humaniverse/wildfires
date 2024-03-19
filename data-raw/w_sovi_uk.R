@@ -44,7 +44,7 @@ data("sovi_scotland")
 data("wildfire_risk_scotland")
 
 w_sovi_scotland <- sovi_scotland |> 
-  left_join(wildfire_risk_scotland) |> 
+  left_join(wildfire_risk_scotland, by = "iz11_code") |> 
   mutate(sovi_decile = ntile(SoVI_standardised, 10),
          wildfire_decile = ntile(wildfire_risk_standardised, 10),
          is_worst_deciles = ifelse(
