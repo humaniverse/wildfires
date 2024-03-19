@@ -64,6 +64,20 @@ the SoVI are also available for all UK nations.
 
 ### Creation of the Social Vulnerability Index via Principal Component Analysis
 
+The datasets including indicators of social vulnerability at the MSOA level or equivalent for all UK nations were standardised using z-score normalization to ensure comparability. Then, correlation among the variables was assessed to ensure the suitability of PCA. The Kaiser-Meyer-Olkin (KMO) measure and Bartlett's test were applied, with high KMO scores and significant Bartlett's test p-values, justifying the PCA approach for all nations.
+
+PCA was conducted using the `psych` package's `principal` function with varimax rotation to enhance interpretability. Five components were extracted based on eigenvalues, representing the underlying structure of the data. The variance explained by each component was calculated, and factor loadings were examined to understand the variable contributions.
+
+The factor loadings shed light on the dimensions of variation within the data:
+
+- **Factor 1**: Represents urban vulnerability, highlighted by housing conditions and ethnic compositions.
+- **Factor 2**: Captures socio-economic and health-related vulnerabilities, particularly around disability and education levels.
+- **Factor 3**: Emphasizes linguistic and ethnic diversity, alongside housing conditions.
+- **Factor 4**: Reflects geographic mobility and housing market dynamics, indicating areas with high internal migration and private rental activity.
+- **Factor 5**: Distinguishes demographic structures, particularly the balance between younger and older populations.
+
+Finally, the Social Vulnerability Index (SoVI) was calculated as a weighted sum of the component scores, with weights based on the variance explained by each component. The SoVI scores were then standardized within country.
+
 ### Prediction of Summer Wildfire Risk via Random Forest
 
 [Add model performance measures]
