@@ -192,24 +192,24 @@ ft_importance_df_summer <-
 
 # ---- CREATE SUMMER WILDFIRE RISK INDEX ----
 # Assuming the independent variables used for training the model are in the same order as the raster stack bands
-raster_df <- as.data.frame(zscore_summer_stack)
-wildfire_probabilities <- predict(rf_model_summer, raster_df, type = "prob")
+summer_raster_df <- as.data.frame(zscore_summer_stack)
+wildfire_probabilities_summer <- predict(rf_model_summer, summer_raster_df, type = "prob")
 
-predicted_raster <- zscore_summer_stack[[1]] # Copy the first layer from the original raster stack
-values(predicted_raster) <- wildfire_probabilities[, 2]
+predicted_raster_summer <- zscore_summer_stack[[1]] # Copy the first layer from the original raster stack
+values(predicted_raster_summer) <- wildfire_probabilities_summer[, 2]
 
-predicted_raster_cropped <- crop(predicted_raster, countries_uk_wgs84)
-predicted_raster_masked <- mask(predicted_raster_cropped, countries_uk_wgs84)
+predicted_raster_summer_cropped <- crop(predicted_raster_summer, countries_uk_wgs84)
+predicted_raster_summer_masked <- mask(predicted_raster_summer_cropped, countries_uk_wgs84)
 
 # Aggregate to MSOA level
 # Extract wildfire risk probabilities for each MSOA
-msoa_probabilities <- raster::extract(predicted_raster, msoa_uk, fun = mean, na.rm = TRUE, df = TRUE)
-msoa_with_probabilities <- cbind(msoa_uk, msoa_probabilities)
+msoa_probabilities_summer <- raster::extract(predicted_raster_summer, msoa_uk, fun = mean, na.rm = TRUE, df = TRUE)
+msoa_with_probabilities_summer <- cbind(msoa_uk, msoa_probabilities_summer)
 
-wildfire_risk <- msoa_with_probabilities |>
+wildfire_risk_summer <- msoa_with_probabilities_summer |>
   st_drop_geometry() |>
   select(-ID) |>
-  rename(wildfire_risk = Slope)
+  rename(wildfire_risk_summer = Slope)
 
 # Separate the different nations & impute missing values using higher geography
 lookup_msoa_ltla <- geographr::lookup_msoa11_msoa21_ltla22 |>
@@ -221,66 +221,161 @@ lookup_iz_ltla <- geographr::lookup_dz11_iz11_ltla20 |>
 lookup_sdz_lgd <- geographr::lookup_dz21_sdz21_dea14_lgd14 |> 
   distinct(sdz21_code, lgd14_code)
 
-wildfire_risk_england <- wildfire_risk |>
+wildfire_risk_summer_england <- wildfire_risk_summer |>
   filter(grepl("^E", msoa21_code)) |>
   left_join(lookup_msoa_ltla) |>
   group_by(ltla22_code) |>
-  mutate(wildfire_risk = ifelse(
-    is.na(wildfire_risk),
-    mean(wildfire_risk, na.rm = TRUE),
-    wildfire_risk
+  mutate(wildfire_risk_summer = ifelse(
+    is.na(wildfire_risk_summer),
+    mean(wildfire_risk_summer, na.rm = TRUE),
+    wildfire_risk_summer
   )) |>
   ungroup() |> 
   # Isle of Scilly is it's own ltla, so still NA: give it mean risk of Penzance (E02003948)
-  mutate(wildfire_risk = if_else(msoa21_code == "E02006781", 0.1846667, wildfire_risk),
-         wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
+  mutate(wildfire_risk_summer = if_else(msoa21_code == "E02006781", 0.1846667, wildfire_risk_summer),
+         wildfire_risk_summer_standardised = scale(wildfire_risk_summer)[,1]) |> 
   rename(ltla21_code = ltla22_code)
 
-wildfire_risk_wales <- wildfire_risk |>
+wildfire_risk_summer_wales <- wildfire_risk_summer |>
   filter(grepl("^W", msoa21_code)) |>
   left_join(lookup_msoa_ltla) |>
   group_by(ltla22_code) |>
-  mutate(wildfire_risk = ifelse(
-    is.na(wildfire_risk),
-    mean(wildfire_risk, na.rm = TRUE),
-    wildfire_risk
+  mutate(wildfire_risk_summer = ifelse(
+    is.na(wildfire_risk_summer),
+    mean(wildfire_risk_summer, na.rm = TRUE),
+    wildfire_risk_summer
   )) |>
   ungroup() |> 
-  mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
+  mutate(wildfire_risk_summer_standardised = scale(wildfire_risk_summer)[,1]) |> 
   rename(ltla21_code = ltla22_code)
 
-wildfire_risk_scotland <- wildfire_risk |>
+wildfire_risk_summer_scotland <- wildfire_risk_summer |>
   filter(grepl("^S", msoa21_code)) |> 
   rename(iz11_code = msoa21_code,
          iz11_name = msoa21_name) |> 
   left_join(lookup_iz_ltla)|>
   group_by(ltla20_code) |>
-  mutate(wildfire_risk = ifelse(
-    is.na(wildfire_risk),
-    mean(wildfire_risk, na.rm = TRUE),
-    wildfire_risk
+  mutate(wildfire_risk_summer = ifelse(
+    is.na(wildfire_risk_summer),
+    mean(wildfire_risk_summer, na.rm = TRUE),
+    wildfire_risk_summer
   )) |>
   ungroup() |> 
-  mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
+  mutate(wildfire_risk_summer_standardised = scale(wildfire_risk_summer)[,1]) |> 
   rename(ltla21_code = ltla20_code)
   
-wildfire_risk_ni <- wildfire_risk |>
+wildfire_risk_summer_ni <- wildfire_risk_summer |>
   filter(grepl("^N", msoa21_code)) |> 
   rename(sdz21_code = msoa21_code,
          sdz21_name = msoa21_name) |> 
   left_join(lookup_sdz_lgd)|>
   group_by(lgd14_code) |>
-  mutate(wildfire_risk = ifelse(
-    is.na(wildfire_risk),
-    mean(wildfire_risk, na.rm = TRUE),
-    wildfire_risk
+  mutate(wildfire_risk_summer = ifelse(
+    is.na(wildfire_risk_summer),
+    mean(wildfire_risk_summer, na.rm = TRUE),
+    wildfire_risk_summer
   )) |>
   ungroup() |> 
-  mutate(wildfire_risk_standardised = scale(wildfire_risk)[,1]) |> 
+  mutate(wildfire_risk_summer_standardised = scale(wildfire_risk_summer)[,1]) |> 
   rename(ltla21_code = lgd14_code)
 
 # Save datasets
-usethis::use_data(wildfire_risk_england, overwrite = TRUE)
-usethis::use_data(wildfire_risk_wales, overwrite = TRUE)
-usethis::use_data(wildfire_risk_scotland, overwrite = TRUE)
-usethis::use_data(wildfire_risk_ni, overwrite = TRUE)
+usethis::use_data(wildfire_risk_summer_england, overwrite = TRUE)
+usethis::use_data(wildfire_risk_summer_wales, overwrite = TRUE)
+usethis::use_data(wildfire_risk_summer_scotland, overwrite = TRUE)
+usethis::use_data(wildfire_risk_summer_ni, overwrite = TRUE)
+
+# ---- CREATE SPRING WILDFIRE RISK INDEX ----
+# Assuming the independent variables used for training the model are in the same order as the raster stack bands
+spring_raster_df <- as.data.frame(zscore_spring_stack)
+wildfire_probabilities_spring <- predict(rf_model_spring, spring_raster_df, type = "prob")
+
+predicted_raster_spring <- zscore_spring_stack[[1]] # Copy the first layer from the original raster stack
+values(predicted_raster_spring) <- wildfire_probabilities_spring[, 2]
+
+predicted_raster_spring_cropped <- crop(predicted_raster_spring, countries_uk_wgs84)
+predicted_raster_spring_masked <- mask(predicted_raster_spring_cropped, countries_uk_wgs84)
+
+# Aggregate to MSOA level
+# Extract wildfire risk probabilities for each MSOA
+msoa_probabilities_spring <- raster::extract(predicted_raster_spring, msoa_uk, fun = mean, na.rm = TRUE, df = TRUE)
+msoa_with_probabilities_spring <- cbind(msoa_uk, msoa_probabilities_spring)
+
+wildfire_risk_spring <- msoa_with_probabilities_spring |>
+  st_drop_geometry() |>
+  select(-ID) |>
+  rename(wildfire_risk_spring = Slope)
+
+# Separate the different nations & impute missing values using higher geography
+lookup_msoa_ltla <- geographr::lookup_msoa11_msoa21_ltla22 |>
+  distinct(msoa21_code, ltla22_code)
+
+lookup_iz_ltla <- geographr::lookup_dz11_iz11_ltla20 |> 
+  distinct(iz11_code, ltla20_code)
+
+lookup_sdz_lgd <- geographr::lookup_dz21_sdz21_dea14_lgd14 |> 
+  distinct(sdz21_code, lgd14_code)
+
+wildfire_risk_spring_england <- wildfire_risk_spring |>
+  filter(grepl("^E", msoa21_code)) |>
+  left_join(lookup_msoa_ltla) |>
+  group_by(ltla22_code) |>
+  mutate(wildfire_risk_spring = ifelse(
+    is.na(wildfire_risk_spring),
+    mean(wildfire_risk_spring, na.rm = TRUE),
+    wildfire_risk_spring
+  )) |>
+  ungroup() |> 
+  # Isle of Scilly is it's own ltla, so still NA: give it mean risk of Penzance (E02003948)
+  mutate(wildfire_risk_spring = if_else(msoa21_code == "E02006781", 0.1846667, wildfire_risk_spring),
+         wildfire_risk_spring_standardised = scale(wildfire_risk_spring)[,1]) |> 
+  rename(ltla21_code = ltla22_code)
+
+wildfire_risk_spring_wales <- wildfire_risk_spring |>
+  filter(grepl("^W", msoa21_code)) |>
+  left_join(lookup_msoa_ltla) |>
+  group_by(ltla22_code) |>
+  mutate(wildfire_risk_spring = ifelse(
+    is.na(wildfire_risk_spring),
+    mean(wildfire_risk_spring, na.rm = TRUE),
+    wildfire_risk_spring
+  )) |>
+  ungroup() |> 
+  mutate(wildfire_risk_spring_standardised = scale(wildfire_risk_spring)[,1]) |> 
+  rename(ltla21_code = ltla22_code)
+
+wildfire_risk_spring_scotland <- wildfire_risk_spring |>
+  filter(grepl("^S", msoa21_code)) |> 
+  rename(iz11_code = msoa21_code,
+         iz11_name = msoa21_name) |> 
+  left_join(lookup_iz_ltla)|>
+  group_by(ltla20_code) |>
+  mutate(wildfire_risk_spring = ifelse(
+    is.na(wildfire_risk_spring),
+    mean(wildfire_risk_spring, na.rm = TRUE),
+    wildfire_risk_spring
+  )) |>
+  ungroup() |> 
+  mutate(wildfire_risk_spring_standardised = scale(wildfire_risk_spring)[,1]) |> 
+  rename(ltla21_code = ltla20_code)
+
+wildfire_risk_spring_ni <- wildfire_risk_spring |>
+  filter(grepl("^N", msoa21_code)) |> 
+  rename(sdz21_code = msoa21_code,
+         sdz21_name = msoa21_name) |> 
+  left_join(lookup_sdz_lgd)|>
+  group_by(lgd14_code) |>
+  mutate(wildfire_risk_spring = ifelse(
+    is.na(wildfire_risk_spring),
+    mean(wildfire_risk_spring, na.rm = TRUE),
+    wildfire_risk_spring
+  )) |>
+  ungroup() |> 
+  mutate(wildfire_risk_spring_standardised = scale(wildfire_risk_spring)[,1]) |> 
+  rename(ltla21_code = lgd14_code)
+
+# Save datasets
+usethis::use_data(wildfire_risk_spring_england, overwrite = TRUE)
+usethis::use_data(wildfire_risk_spring_wales, overwrite = TRUE)
+usethis::use_data(wildfire_risk_spring_scotland, overwrite = TRUE)
+usethis::use_data(wildfire_risk_spring_ni, overwrite = TRUE)
