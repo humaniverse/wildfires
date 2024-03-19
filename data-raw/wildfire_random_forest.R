@@ -6,7 +6,7 @@ library("tidyverse")
 library("randomForest")
 library("dismo") # for kfold
 
-devtools::load_all(".")
+# devtools::load_all(".")
 
 spring_stack <- spring_independent_var_stack
 summer_stack <- summer_independent_var_stack
