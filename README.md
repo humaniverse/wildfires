@@ -62,12 +62,21 @@ the SoVI are also available for all UK nations.
 -   Nothern Ireland: `wildfires::indic_sdz_ni`
 -   Scotland: `wildfires::indic_msoa_scotland`
 
-### Wildfire Risk (Summer)
+### Wildfire Risk
 
--   England: `wildfires::wildfire_risk_england`
--   Wales: `wildfires::wildfire_risk_wales`
--   Nothern Ireland: `wildfires::wildfire_risk_ni`
--   Scotland: `wildfires::wildfire_risk_scotland`
+**Summer**
+
+-   England: `wildfires::wildfire_risk_summer_england`
+-   Wales: `wildfires::wildfire_risk_summer_wales`
+-   Nothern Ireland: `wildfires::wildfire_risk_summer_ni`
+-   Scotland: `wildfires::wildfire_risk_summer_scotland`
+
+**Spring**
+
+-   England: `wildfires::wildfire_risk_spring_england`
+-   Wales: `wildfires::wildfire_risk_spring_wales`
+-   Nothern Ireland: `wildfires::wildfire_risk_spring_ni`
+-   Scotland: `wildfires::wildfire_risk_spring_scotland`
 
 ## Methodology
 
@@ -145,12 +154,10 @@ influential factors for fire occurrence.
 
 **Wildfire Risk Index Creation**
 
-Utilizing the trained Random Forest model, probabilities of wildfire occurrences were
-predicted across the UK. They were then aggregated to the MSOA level, resulting 
+Utilizing both Random Forest models, distinct probabilities of wildfire occurrences were
+predicted across the UK for summer and spring. They were then aggregated to the MSOA level, resulting 
 in the Wildfire Risk Index. Missing values were imputed using higher geography averages when necessary.
 Similarly to the Social Vulnerability Index, the Wildfire Risk Index was standardized separately for England, Wales, Scotland, and Northern Ireland to enable comparison within each nation.
-
-*Note: As of now, only summer wildfires were predicted, using the summer random forest model*
 
 ## Getting help
 
