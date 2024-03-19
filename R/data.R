@@ -322,19 +322,19 @@
 #'
 "sovi_wales"
 
-#' Wildfire Risk Prediction for England's MSOAs
+#' Summer Wildfire Risk Prediction for England's MSOAs
 #'
 #' This dataset provides predicted wildfire risk levels for Middle Layer Super Output Areas (MSOAs)
-#' in England, based on a Random Forest model incorporating various environmental and anthropogenic factors.
+#' in England in the summer, based on a Random Forest model incorporating various environmental and anthropogenic factors.
 #'
 #' @format A tibble with 6,856 rows and 5 columns:
 #'
 #' \describe{
 #'   \item{msoa21_name}{\code{character} MSOA name.}
 #'   \item{msoa21_code}{\code{character} MSOA code.}
-#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{wildfire_risk_summer}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
 #'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
-#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#'   \item{wildfire_risk_summer_standardised}{\code{double} Standardised wildfire risk score.}
 #' }
 #'
 #' @details
@@ -342,11 +342,11 @@
 #' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
-"wildfire_risk_england"
+"wildfire_risk_summer_england"
 
-#' Wildfire Risk Prediction for Northern Ireland's Super Data Zones
+#' Summer Wildfire Risk Prediction for Northern Ireland's Super Data Zones
 #'
-#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland,
+#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland in the summer,
 #' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
 #'
 #' @format A tibble with 850 rows and 5 columns:
@@ -354,9 +354,9 @@
 #' \describe{
 #'   \item{sdz21_name}{\code{character} SDZ name.}
 #'   \item{sdz21_code}{\code{character} SDZ code.}
-#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{wildfire_risk_summer}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
 #'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
-#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#'   \item{wildfire_risk_summer_standardised}{\code{double} Standardised wildfire risk score.}
 #' }
 #'
 #' @details
@@ -364,11 +364,11 @@
 #' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
-"wildfire_risk_ni"
+"wildfire_risk_summer_ni"
 
-#' Wildfire Risk Prediction for Scotland's Intermediate Zones
+#' Summer Wildfire Risk Prediction for Scotland's Intermediate Zones
 #'
-#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland, utilizing a Random Forest model
+#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland in the summer, utilizing a Random Forest model
 #' that integrates environmental and anthropogenic variables.
 #'
 #' @format A tibble with 1,279 rows and 5 columns:
@@ -376,9 +376,9 @@
 #' \describe{
 #'   \item{iz11_name}{\code{character} IZ name.}
 #'   \item{iz11_code}{\code{character} IZ code.}
-#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{wildfire_risk_summer}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
 #'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
-#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#'   \item{wildfire_risk_summer_standardised}{\code{double} Standardised wildfire risk score.}
 #' }
 #'
 #' @details
@@ -386,11 +386,11 @@
 #' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
-"wildfire_risk_scotland"
+"wildfire_risk_summer_scotland"
 
-#' Wildfire Risk Prediction for Wales' MSOAs
+#' Summer Wildfire Risk Prediction for Wales' MSOAs
 #'
-#' This dataset assesses wildfire risk across Middle Layer Super Output Areas (MSOAs) in Wales,
+#' This dataset assesses wildfire risk across Middle Layer Super Output Areas (MSOAs) in Wales in the summer,
 #' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
 #'
 #' @format A tibble with 408 rows and 5 columns:
@@ -398,9 +398,9 @@
 #' \describe{
 #'   \item{msoa21_name}{\code{character} MSOA name.}
 #'   \item{msoa21_code}{\code{character} MSOA code.}
-#'   \item{wildfire_risk}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{wildfire_risk_summer}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
 #'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
-#'   \item{wildfire_risk_standardised}{\code{double} Standardised wildfire risk score.}
+#'   \item{wildfire_risk_summer_standardised}{\code{double} Standardised wildfire risk score.}
 #' }
 #'
 #' @details
@@ -408,11 +408,99 @@
 #' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
 #' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
 #'
-"wildfire_risk_wales"
+"wildfire_risk_summer_wales"
 
-#' Combined Wildfire Risk and Social Vulnerability Index (SoVI) for UK MSOAs
+#' Spring Wildfire Risk Prediction for England's MSOAs
 #'
-#' This dataset integrates the Social Vulnerability Index (SoVI) and wildfire risk predictions
+#' This dataset provides predicted wildfire risk levels for Middle Layer Super Output Areas (MSOAs)
+#' in England in the spring, based on a Random Forest model incorporating various environmental and anthropogenic factors.
+#'
+#' @format A tibble with 6,856 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{msoa21_name}{\code{character} MSOA name.}
+#'   \item{msoa21_code}{\code{character} MSOA code.}
+#'   \item{wildfire_risk_spring}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_spring_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
+#'
+"wildfire_risk_spring_england"
+
+#' Spring Wildfire Risk Prediction for Northern Ireland's Super Data Zones
+#'
+#' This dataset outlines predicted wildfire risk levels for Super Data Zones (SDZs) in Northern Ireland in the spring,
+#' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
+#'
+#' @format A tibble with 850 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{sdz21_name}{\code{character} SDZ name.}
+#'   \item{sdz21_code}{\code{character} SDZ code.}
+#'   \item{wildfire_risk_spring}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_spring_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
+#'
+"wildfire_risk_spring_ni"
+
+#' Spring Wildfire Risk Prediction for Scotland's Intermediate Zones
+#'
+#' Predicted wildfire risk levels for Intermediate Zones (IZs) in Scotland in the spring, utilizing a Random Forest model
+#' that integrates environmental and anthropogenic variables.
+#'
+#' @format A tibble with 1,279 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{iz11_name}{\code{character} IZ name.}
+#'   \item{iz11_code}{\code{character} IZ code.}
+#'   \item{wildfire_risk_spring}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_spring_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
+#'
+"wildfire_risk_spring_scotland"
+
+#' Spring Wildfire Risk Prediction for Wales' MSOAs
+#'
+#' This dataset assesses wildfire risk across Middle Layer Super Output Areas (MSOAs) in Wales in the spring,
+#' derived from a Random Forest analysis that integrates environmental and anthropogenic variables.
+#'
+#' @format A tibble with 408 rows and 5 columns:
+#'
+#' \describe{
+#'   \item{msoa21_name}{\code{character} MSOA name.}
+#'   \item{msoa21_code}{\code{character} MSOA code.}
+#'   \item{wildfire_risk_spring}{\code{double} Predicted wildfire risk score. Higher values signify greater risk.}
+#'   \item{ltla21_code}{\code{character} Local Authority code (higher level geography).}
+#'   \item{wildfire_risk_spring_standardised}{\code{double} Standardised wildfire risk score.}
+#' }
+#'
+#' @details
+#' Wildfire risk predictions are generated using a Random Forest model, considering climatological,
+#' topographical, and land use variables, as detailed in "Spatial Assessment of Wildfire Vulnerability
+#' in England and Wales: Coupling Social Vulnerability with Predicted Wildfire Susceptibility" by Hasan Guler.
+#'
+"wildfire_risk_spring_wales"
+
+#' Combined Summer Wildfire Risk and Social Vulnerability Index (SoVI) for UK MSOAs
+#'
+#' This dataset integrates the Social Vulnerability Index (SoVI) and summer wildfire risk predictions
 #' across Middle Layer Super Output Areas (MSOAs) in the UK. It includes a binary indicator identifying
 #' MSOAs within the worst deciles (8th, 9th, or 10th) for both SoVI and wildfire risk.
 #'

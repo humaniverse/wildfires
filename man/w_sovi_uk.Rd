@@ -3,7 +3,7 @@
 \docType{data}
 \name{w_sovi_uk}
 \alias{w_sovi_uk}
-\title{Combined Wildfire Risk and Social Vulnerability Index (SoVI) for UK MSOAs}
+\title{Combined Summer Wildfire Risk and Social Vulnerability Index (SoVI) for UK MSOAs}
 \format{
 A tibble with 9,393 rows and 5 columns:
 
@@ -19,7 +19,7 @@ A tibble with 9,393 rows and 5 columns:
 w_sovi_uk
 }
 \description{
-This dataset integrates the Social Vulnerability Index (SoVI) and wildfire risk predictions
+This dataset integrates the Social Vulnerability Index (SoVI) and summer wildfire risk predictions
 across Middle Layer Super Output Areas (MSOAs) in the UK. It includes a binary indicator identifying
 MSOAs within the worst deciles (8th, 9th, or 10th) for both SoVI and wildfire risk.
 }
