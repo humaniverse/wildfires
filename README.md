@@ -1,9 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # Wildfire Risk and Social Vulnerability in the UK </a>
 
 <!-- badges: start -->
