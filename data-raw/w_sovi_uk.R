@@ -2,6 +2,7 @@
 # ---- Setup ----
 # devtools::load_all(".")
 library(tidyverse)
+library(sf)
 
 # ---- England ----
 data("sovi_england")
@@ -80,5 +81,24 @@ w_sovi_uk <- rbind(w_sovi_england, w_sovi_wales, w_sovi_scotland, w_sovi_ni)
 
 usethis::use_data(w_sovi_uk, overwrite = TRUE)
 
-# Save as csv
-write.csv(w_sovi_uk, "data/wildfire_sovi_uk.csv", row.names = FALSE)
+# --- Save as shapefile at MSOA level ---
+boundaries_msoa_ni <- geographr::boundaries_sdz21 |>
+  rename(msoa21_code = sdz21_code) |>
+  select(-sdz21_name)
+
+boundaries_msoa_scotland <- geographr::boundaries_iz11 |>
+  rename(msoa21_code = iz11_code) |>
+  select(-iz11_name)
+
+boundaries_msoa_uk <- bind_rows(
+  geographr::boundaries_msoa21, boundaries_msoa_ni,
+  boundaries_msoa_scotland
+) |>
+  select(-msoa21_name)
+
+w_sovi_uk_msoa <- w_sovi_uk |>
+  left_join(boundaries_msoa_uk)
+
+
+st_write(w_sovi_uk_msoa, "data/shapefile/wildfire_sovi_uk.shp")
+
