@@ -79,3 +79,6 @@ w_sovi_ni <- sovi_ni |>
 w_sovi_uk <- rbind(w_sovi_england, w_sovi_wales, w_sovi_scotland, w_sovi_ni)
 
 usethis::use_data(w_sovi_uk, overwrite = TRUE)
+
+# Save as csv
+write.csv(w_sovi_uk, "data/wildfire_sovi_uk.csv", row.names = FALSE)

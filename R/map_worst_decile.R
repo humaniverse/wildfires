@@ -232,7 +232,8 @@ map_worst_decile_ltla <- function(df, nation = "All"){
     geom_sf(data = df_plot, aes(fill = is_worst), color = NA) + 
     theme_brc_map() +
     theme(legend.position = "none") +
-    scale_fill_manual(values = c("yes" = "#ee2a24"), na.value = "white")
+    scale_fill_manual(values = c("yes" = "#ee2a24"), na.value = "white") +
+    coord_map("azequalarea") 
   
   print(plot)
   
