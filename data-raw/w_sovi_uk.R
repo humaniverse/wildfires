@@ -83,22 +83,21 @@ usethis::use_data(w_sovi_uk, overwrite = TRUE)
 
 # --- Save as shapefile at MSOA level ---
 boundaries_msoa_ni <- geographr::boundaries_sdz21 |>
-  rename(msoa21_code = sdz21_code) |>
-  select(-sdz21_name)
+  rename(msoa21_code = sdz21_code) 
 
 boundaries_msoa_scotland <- geographr::boundaries_iz11 |>
-  rename(msoa21_code = iz11_code) |>
-  select(-iz11_name)
+  rename(msoa21_code = iz11_code) 
 
 boundaries_msoa_uk <- bind_rows(
   geographr::boundaries_msoa21, boundaries_msoa_ni,
   boundaries_msoa_scotland
-) |>
-  select(-msoa21_name)
+) 
 
 w_sovi_uk_msoa <- w_sovi_uk |>
-  left_join(boundaries_msoa_uk)
+  left_join(boundaries_msoa_uk) |>
+  mutate(area_name = coalesce(sdz21_name, iz11_name, msoa21_name)) |>
+  select(msoa21_code, `Area name` = area_name, `Vulnerable to wildfire in Summer?` = is_worst_deciles, geometry)
 
 
-st_write(w_sovi_uk_msoa, "data/shapefile/wildfire_sovi_uk.shp")
+st_write(w_sovi_uk_msoa, "data/shapefile/wildfire_sovi_uk_summer.shp", append = FALSE)
 
